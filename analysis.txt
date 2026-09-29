@@ -1,0 +1,1480 @@
+DT-CARGO VEHICLE TELEMETRY ANALYSIS
+===================================
+EDA + DATA QUALITY ANALYSIS LOG
+===================================
+
+Project:
+Vehicle Telemetry Analysis for Improving Efficiency in Logistics Fleet Operations
+
+Dataset:
+DT-CARGO V2.0
+
+Purpose of this file:
+---------------------
+This file records completed EDA investigations, conclusions, and the
+candidate data-quality flags identified from them.
+
+IMPORTANT:
+- EDA investigations should NOT be repeated unless new evidence appears.
+- Raw data must be preserved.
+- Final cleaning/modeling rules will be implemented after EDA consolidation.
+- A quality flag does NOT automatically mean that a record must be deleted.
+- Many suspicious records may still be useful for anomaly detection.
+- Raw values should be preserved for traceability.
+
+
+============================================================
+1. DATASET STRUCTURE
+============================================================
+
+tracks.csv:
+- 151,598 tracks
+- 19 columns
+- 163 unique vehicles
+- 13,444 unique tours
+
+fleet.csv:
+- 163 vehicles
+- 5 columns
+- Contains vehicle-level specifications and fleet_test_id
+
+Relationship:
+- track_id is unique: 151,598 / 151,598 unique
+- track_id has no missing values
+- No duplicate track_id
+- vehicle_id has no missing values
+- All 163 track vehicles exist in fleet.csv
+- All 163 fleet vehicles have tracks
+- Track -> vehicle is a complete many-to-one relationship
+
+Speed data:
+- speed/{vehicle_id}/{track_id}.csv
+- 163 vehicle folders
+- Each speed file contains:
+    epoch
+    speed
+    hdop
+- High-resolution speed telemetry
+- No latitude/longitude data
+
+
+============================================================
+2. TRACK ID EDA
+============================================================
+
+Findings:
+- Total tracks: 151,598
+- Missing track_id: 0
+- Unique track_id: 151,598
+- Duplicate track_id: 0
+
+Conclusion:
+- track_id can safely be treated as the primary track identifier.
+
+
+============================================================
+3. VEHICLE ID EDA
+============================================================
+
+Findings:
+- 163 unique vehicles in tracks
+- 163 unique vehicles in fleet
+- No track refers to a missing fleet vehicle
+- No fleet vehicle exists without tracks
+
+Conclusion:
+- Vehicle relationship is structurally consistent.
+
+
+============================================================
+4. TOUR ID EDA
+============================================================
+
+Findings:
+- 13,444 unique tours
+- No missing tour_id
+- Tracks per tour:
+    mean   = 11.276
+    median = 4
+    min    = 1
+    max    = 2,138
+
+- 88 tours involve multiple vehicles.
+- Among multi-vehicle tours:
+    mean vehicles/tour = 2.534
+    median             = 2
+    max                = 8
+
+Conclusion:
+- tour_id is valid as a grouping identifier.
+- A tour is NOT necessarily vehicle-specific.
+- Do not assume one tour = one vehicle journey.
+- Track-level analysis remains the primary unit of analysis.
+
+
+============================================================
+5. TIMESTAMP EDA
+============================================================
+
+Timestamp parsing required:
+
+pd.to_datetime(..., format="mixed", utc=True)
+
+Derived:
+duration_seconds =
+    stop_time - start_time
+
+Dataset time span:
+- Earliest start: 2021-08-26
+- Latest start: 2024-02-06
+- Approximately 2 years 5 months
+
+Findings:
+- Missing duration: 0
+- Negative durations: 9
+- Zero durations: 0
+- Positive durations: 151,589
+
+Duration statistics:
+- mean   = 1339.42 s
+- median = 354.96 s
+- 75%    = 1237.16 s
+- 95%    = 6531.38 s
+- 99%    = 13220.32 s
+- max    = 61784.03 s (~17.16 h)
+
+Short durations:
+- <1 sec: 68
+- <5 sec: 1,903
+- <10 sec: 6,172
+- <30 sec: 30,755
+- <60 sec: 37,404
+
+Long durations:
+- >1 hour: 17,051
+- >6 hours: 12
+- >12 hours: 2
+- >24 hours: 0
+
+Important:
+- Very short duration is NOT automatically invalid.
+- Very long positive duration is NOT automatically invalid.
+- No arbitrary duration upper cutoff should be imposed.
+
+Negative-duration records:
+- 9 records have stop_time < start_time.
+- These are invalid for duration-dependent calculations.
+- Do not swap start_time and stop_time automatically.
+
+Candidate flag:
+duration_invalid = duration_seconds < 0
+
+
+============================================================
+6. TEMPORAL COVERAGE EDA
+============================================================
+
+Dataset is NOT continuously sampled.
+
+Major periods:
+- Aug 2021 - Oct 2022:
+    126,950 tracks (~83.7%)
+- Sep 2023 - Feb 2024:
+    24,648 tracks (~16.3%)
+
+Sparse periods:
+- Aug-Oct 2022: 44 tracks
+- Jun-Jul 2023: 137 tracks
+
+Vehicle coverage is highly uneven:
+- Some vehicles have only 1-2 tracks.
+- Some vehicles have thousands of tracks.
+- Some vehicles have coverage spanning weeks.
+- Some vehicles have only a few minutes/hours of coverage.
+
+Conclusion:
+- Dataset appears campaign/episodic rather than continuous fleet monitoring.
+- Temporal gaps must NOT automatically be interpreted as missing data.
+- Vehicle-level models should consider minimum observation counts.
+- Temporal validation should account for the non-continuous nature of the dataset.
+
+
+============================================================
+7. FLEET TEST EDA
+============================================================
+
+fleet_test_id is stored in fleet.csv.
+
+Fleet tests:
+Test 1:
+- 40,048 tracks
+- 18 vehicles
+- 2,976 tours
+
+Test 2:
+- 12,089 tracks
+- 5 vehicles
+- 1,362 tours
+
+Test 3:
+- 22,933 tracks
+- 12 vehicles
+- 2,326 tours
+
+Test 4:
+- 26,860 tracks
+- 18 vehicles
+- 1,654 tours
+
+Test 5:
+- 25,020 tracks
+- 13 vehicles
+- 4,517 tours
+
+Test 6:
+- 24,648 tracks
+- 97 vehicles
+- 611 tours
+
+Tests 1-5:
+- 126,950 tracks
+- 116 vehicles
+- 12,835 tours
+
+Test 6:
+- 24,648 tracks
+- 97 vehicles
+- 611 tours
+
+Important structural difference:
+- Test 6 contains ~59.5% of all vehicles but only ~16.3% of tracks.
+- Test 6 is therefore structurally different from tests 1-5.
+
+Negative n_signal_loss is concentrated in tests 5 and 6:
+- Tests 5+6 contain 81.8% of negative n_signal_loss records.
+- Tests 5+6 contain only ~32.8% of total tracks.
+
+Important:
+- This is an association, not proof that fleet test caused the problem.
+
+
+============================================================
+8. FLEET VEHICLE METADATA EDA
+============================================================
+
+Fleet specifications:
+- gross_vehicle_weight
+- total_mass_with_trailer
+- axle_class
+
+149 vehicles have complete specifications.
+14 vehicles have all three specification fields missing.
+
+The 14 missing-spec vehicles:
+- 13 are vehicles 54-66 in fleet test 5
+- 1 is vehicle 125 in fleet test 6
+
+Therefore missingness is STRUCTURED at vehicle level.
+
+Gross vehicle weight:
+- 18,000: 121 vehicles
+- 25,000: 1
+- 26,000: 22
+- 32,000: 5
+- Missing: 14
+
+Total mass with trailer:
+- 26,000: 2
+- 32,000: 17
+- 40,000: 130
+- Missing: 14
+
+Axle class:
+- 9: 2
+- 12: 5
+- 41: 3
+- 42: 18
+- 97: 12
+- 98: 109
+- Missing: 14
+
+Conclusion:
+- Vehicle specifications are highly structured/configuration-like.
+- axle_class should be treated as categorical/configuration information,
+  not as an ordinary continuous numeric variable.
+- Missing vehicle specifications should not be blindly imputed.
+- Vehicle configuration is relevant for future suitability analysis.
+
+
+============================================================
+9. MISSING TELEMETRY: 49 TRACKS
+============================================================
+
+49 tracks have missing:
+- distance
+- avg_speed
+- max_speed
+- n_signal_loss
+- d_signal_loss
+- avg_hdop
+
+All 49 corresponding speed files exist.
+
+Raw telemetry inspection:
+- 48 files contain only 2 observations
+- 1 file contains 1 observation
+- mean observations ≈ 1.90
+- mean telemetry span ≈ 0.11 sec
+- maximum telemetry span ≈ 0.50 sec
+
+Example:
+Track 85088:
+- vehicle 44
+- metadata duration ≈ 0.528 sec
+- speed file has only 2 observations
+- telemetry span ≈ 0.102 sec
+
+Conclusion:
+- These are not ordinary missing values.
+- They are extremely insufficient telemetry records.
+- Do NOT impute their missing telemetry values.
+- Preserve them in raw data.
+- Exclude them from analyses requiring reliable track-level telemetry.
+
+Candidate flag:
+insufficient_telemetry
+
+
+============================================================
+10. MISSING r_signal_loss
+============================================================
+
+Missing r_signal_loss:
+- 1,714 tracks
+- 1.13% of all tracks
+
+Of these:
+- 1,665 have distance = 0 and avg_speed = 0
+- 49 are the insufficient-telemetry tracks
+
+Therefore:
+- 97.14% of missing r_signal_loss occurs in zero-distance tracks.
+- Among non-zero-distance tracks, missing r_signal_loss = 0%.
+
+Conclusion:
+- Missingness is structurally associated with zero-distance /
+  insufficient telemetry.
+- Do NOT blindly replace missing r_signal_loss with zero.
+- Preserve missing values.
+- Depending on future model, either omit the feature or use a missingness indicator.
+
+Candidate flag:
+r_signal_loss_missing
+
+
+============================================================
+11. NEGATIVE avg_speed
+============================================================
+
+6 records have negative avg_speed.
+
+Records:
+132379
+132420
+136589
+138378
+149007
+150015
+
+Negative speed magnitude is invalid.
+
+All six corresponding speed files were EMPTY.
+
+Conclusion:
+- Negative avg_speed cannot represent valid speed magnitude.
+- Do not replace with zero.
+- Preserve raw value.
+- Processed modeling value should become NaN.
+
+Candidate flags:
+avg_speed_negative
+avg_speed_valid
+
+
+============================================================
+12. NEGATIVE n_signal_loss
+============================================================
+
+1,927 tracks have negative n_signal_loss.
+
+Distribution:
+- Negative values occur across 144/163 vehicles.
+- Values range approximately:
+    -4 to -150,494
+
+Fleet-test distribution:
+Test 1: 114
+Test 2: 84
+Test 3: 54
+Test 4: 70
+Test 5: 799
+Test 6: 777
+
+Tests 5+6:
+- 1,576 / 1,927 negative records
+- 81.8% of negative records
+
+n_signal_loss is a COUNT, so negative values are invalid.
+
+Relationship with other signal-loss variables:
+- n_signal_loss vs d_signal_loss: -0.264
+- n_signal_loss vs r_signal_loss: -0.018
+
+Conclusion:
+- Cannot reliably reconstruct negative counts from other fields.
+- Do not replace negative values with zero.
+- Preserve raw value.
+- Set invalid processed value to NaN.
+
+Candidate flags:
+n_signal_loss_negative
+n_signal_loss_valid
+
+
+============================================================
+13. SIGNAL LOSS DEFINITIONS
+============================================================
+
+Official DT-CARGO interpretation:
+
+n_signal_loss:
+- number of signal-loss events during recording
+
+d_signal_loss:
+- distance covered during signal losses
+- measured in metres
+- NOT duration
+
+r_signal_loss:
+- signal-loss distance / recorded track distance
+
+Therefore:
+r_signal_loss ≈ d_signal_loss / distance
+
+These definitions must be preserved in feature documentation.
+
+
+============================================================
+14. r_signal_loss > 1
+============================================================
+
+90 tracks have:
+r_signal_loss > 1
+
+This is approximately:
+0.059% of all tracks.
+
+For valid non-zero-distance records with:
+- distance > 0
+- d_signal_loss >= 0
+- 0 <= r_signal_loss <= 1
+
+the relationship:
+
+r_signal_loss ≈ d_signal_loss / distance
+
+was numerically confirmed.
+
+Difference was essentially zero.
+
+Of the 90 r_signal_loss > 1 records:
+- 78 had negative n_signal_loss
+- 12 had non-negative n_signal_loss
+
+Conclusion:
+- r_signal_loss > 1 is outside the expected ratio range.
+- Preserve raw value.
+- Do not delete record automatically.
+- Use a validity flag and NaN processed value if required by modeling.
+
+Candidate flags:
+r_signal_loss_out_of_range
+r_signal_loss_valid
+
+
+============================================================
+15. max_speed EDA
+============================================================
+
+max_speed:
+- generally agrees with raw telemetry maximum in inspected samples.
+- Extreme values exist.
+
+Statistics:
+- median ≈ 6.59 km/h equivalent
+  (raw unit is m/s)
+- 260 records have max_speed > 30 m/s.
+
+Top extreme examples include values >50 m/s.
+
+Important:
+- High max_speed alone does NOT mean invalid.
+- Some high-speed records are genuinely supported by raw telemetry.
+- High-speed records often have additional quality concerns such as:
+    high HDOP
+    high track_gap
+    high signal-loss measures
+    zero-distance inconsistencies
+
+Conclusion:
+- Do NOT create a simple max_speed > threshold = invalid rule.
+
+
+============================================================
+16. avg_speed > max_speed
+============================================================
+
+45,819 tracks:
+avg_speed > max_speed
+
+≈30.22% of all tracks.
+
+This is mathematically inconsistent if both represent the same
+speed quantity over the same track.
+
+Representative raw telemetry investigations showed:
+- track-level avg_speed can differ dramatically from raw speed mean
+- raw telemetry mean can remain physically reasonable
+- raw telemetry max generally agrees with track-level max_speed
+
+Examples include tracks with:
+- avg_speed = hundreds/thousands of m/s
+- max_speed = fractions of m/s or a few m/s
+
+Conclusion:
+- Track-level avg_speed is not authoritative for affected records.
+- Raw telemetry should be used when reliable high-resolution speed features
+  are required.
+- Preserve original avg_speed for traceability.
+- Do not blindly delete all records where avg_speed > max_speed because
+  this may remove useful observations from an imperfect summary field.
+
+Candidate flag:
+avg_speed_gt_max_speed
+
+
+============================================================
+17. TRACK GAP
+============================================================
+
+Official definition:
+track_gap = distance gap to the following track, in metres.
+
+It is NOT a time gap.
+
+Statistics:
+- count = 151,435
+- missing = 163
+- mean ≈ 1,512.8 m
+- median ≈ 0
+- 90% ≈ 35.68 m
+- 95% ≈ 139.74 m
+- 99% ≈ 52.89 km
+- max ≈ 4,907.26 km
+
+Counts:
+- zero = 23
+- >10 m = 55,902
+- >30 m = 17,525
+- >60 m = 10,840
+
+Missing track_gap:
+- 163 records
+- 157 have a following chronological track
+- 6 do not have a following chronological track
+
+Therefore missing track_gap is NOT simply equivalent to "last track".
+
+Because track-level data does not provide sufficient spatial information
+to reconstruct it reliably:
+
+Conclusion:
+- Preserve missing track_gap.
+- Do NOT impute missing track_gap as zero.
+- Large track_gap is not automatically an error.
+
+
+============================================================
+18. DISTANCE EDA
+============================================================
+
+Raw distance unit:
+metres
+
+Derived:
+distance_km = distance / 1000
+
+Non-missing distance:
+- count = 151,549
+- mean = 14.526 km
+- median = 0.116 km
+- 75% = 2.058 km
+- 90% = 44.327 km
+- 95% = 94.530 km
+- 99% = 232.901 km
+- max = 476.551 km
+
+Counts:
+- distance = 0: 1,665
+- distance <1 km: 108,412
+- distance >=1 km: 43,137
+- distance >=10 km: 28,312
+- distance >=100 km: 7,044
+
+Approximately:
+- 71.5% of non-missing tracks are <1 km
+- 18.7% are >=10 km
+- 4.65% are >=100 km
+
+Conclusion:
+- Distance is extremely right-skewed.
+- Do NOT remove short tracks simply because they are short.
+- Future modeling may require log transformation / robust scaling.
+
+
+============================================================
+19. ZERO-DISTANCE TRACKS
+============================================================
+
+Zero-distance tracks:
+- 1,665
+
+Cross-tab with max_speed:
+
+distance = 0:
+- max_speed <= 1 m/s: 1,477
+- max_speed > 1 m/s: 188
+
+Interpretation:
+- 1,477 zero-distance tracks have near-stationary speed and are plausible.
+- 188 have zero distance but max_speed >1 m/s and are suspicious.
+
+Median comparison:
+
+Zero distance + max_speed <=1:
+- max_speed ≈ 0.07 m/s
+- avg_hdop ≈ 0.66
+- n_signal_loss ≈ 0
+- duration ≈ 8.26 sec
+
+Zero distance + max_speed >1:
+- max_speed ≈ 4.22 m/s
+- avg_hdop ≈ 9.41
+- n_signal_loss ≈ 83
+- duration ≈ 25.98 sec
+
+Raw telemetry examples confirmed that some high-speed/zero-distance
+records genuinely contain high raw speeds.
+
+Conclusion:
+- Zero distance itself is NOT invalid.
+- Zero distance + speed evidence is suspicious.
+- Do not reconstruct distance from speed without knowing the official
+  distance calculation procedure.
+
+Candidate flags:
+zero_distance
+zero_distance_speed_issue
+
+
+============================================================
+20. SHORT DISTANCE + LONG DURATION
+============================================================
+
+Screening group:
+distance > 0
+distance < 100 m
+duration > 1 hour
+
+Found:
+- 530 tracks
+
+Statistics:
+- mean distance ≈ 32.44 m
+- median distance ≈ 20 m
+- mean duration ≈ 7,946.5 s (~2.21 h)
+- median duration ≈ 6,818.3 s (~1.89 h)
+- avg_speed mostly near zero
+- max_speed can be high
+- signal-loss counts can be large
+- HDOP generally reasonable in aggregate
+
+Conclusion:
+- This is a distinct/suspicious population.
+- Possible explanations:
+    stationary/near-stationary activity
+    depot/shunting activity
+    waiting
+    segmentation behavior
+    telemetry/recording behavior
+- Cannot determine the exact cause from current data.
+- Do NOT delete automatically.
+- Do NOT create a hard "short distance + long duration = invalid" rule.
+
+
+============================================================
+21. DURATION BY CONTEXT VARIABLES
+============================================================
+
+LONG_HAUL:
+
+False:
+- median ≈ 354 s
+- 90% ≈ 3,619 s
+- 99% ≈ 11,368 s
+
+True:
+- median ≈ 630 s
+- 90% ≈ 6,880 s
+- 99% ≈ 28,229 s
+
+Conclusion:
+long_haul=True is associated with longer duration.
+
+Important:
+- long_haul is a dataset-provided operational classification.
+- Do NOT redefine long_haul using an arbitrary distance threshold.
+
+
+HOME_BASE:
+
+False:
+- median ≈ 531 s
+- 90% ≈ 5,694 s
+- 99% ≈ 14,644 s
+
+True:
+- median ≈ 257 s
+- 90% ≈ 1,802 s
+- 99% ≈ 9,484 s
+
+Conclusion:
+home_base=True is associated with shorter durations.
+
+
+INDUSTRIAL_AREA:
+
+False:
+- median ≈ 458 s
+- 90% ≈ 5,077 s
+- 99% ≈ 14,711 s
+
+True:
+- median ≈ 325 s
+- 90% ≈ 2,356 s
+- 99% ≈ 8,116 s
+
+Conclusion:
+industrial_area=True is associated with shorter durations.
+
+Important:
+- This is contextual information.
+- It does not prove that the whole track was an industrial operation.
+
+
+REST_AREA:
+
+False:
+- median ≈ 354 s
+- 90% ≈ 3,861 s
+- 99% ≈ 12,681 s
+
+True:
+- median ≈ 2,054 s
+- 90% ≈ 9,161 s
+- 99% ≈ 18,543 s
+
+True group:
+- 1,803 tracks (~1.19%)
+
+Conclusion:
+rest_area=True is associated with substantially longer durations.
+
+Important:
+- rest_area=True does NOT mean the entire track was a rest event.
+
+
+SERVICE_AREA_FUEL:
+
+False:
+- median ≈ 354 s
+- 90% ≈ 3,864 s
+- 99% ≈ 12,661 s
+
+True:
+- median ≈ 2,857 s
+- 90% ≈ 13,653 s
+- 99% ≈ 16,863 s
+
+True group:
+- 2,107 tracks (~1.39%)
+
+Conclusion:
+service_area_fuel=True is associated with substantially longer durations.
+
+Important:
+- This does NOT mean the entire track duration represents fueling.
+- It is a contextual attribute.
+
+
+============================================================
+22. CONTEXT VARIABLE DISTRIBUTIONS
+============================================================
+
+home_base:
+- True: 76,075
+- False: 75,523
+
+long_haul:
+- True: 16,439
+- False: 135,159
+
+rest_area:
+- True: 1,803
+- False: 149,795
+
+service_area_fuel:
+- True: 2,107
+- False: 149,491
+
+industrial_area:
+- True: 93,947
+- False: 57,651
+
+No missing values in these five boolean context variables.
+
+Correlations:
+- home_base vs long_haul: -0.350
+- home_base vs rest_area: -0.110
+- home_base vs service_area_fuel: -0.119
+- home_base vs industrial_area: +0.256
+- long_haul vs rest_area: +0.155
+- long_haul vs service_area_fuel: +0.164
+- long_haul vs industrial_area: -0.111
+- rest_area vs service_area_fuel: +0.038
+- rest_area vs industrial_area: -0.140
+- service_area_fuel vs industrial_area: -0.151
+
+Conclusion:
+- No extremely high redundancy among these contextual variables.
+- They can potentially contribute different operational information.
+
+
+============================================================
+23. DISTANCE BY CONTEXT
+============================================================
+
+LONG_HAUL:
+
+False:
+- median ≈ 0.112 km
+- mean ≈ 7.012 km
+- 90% ≈ 36.269 km
+- 95% ≈ 78.741 km
+
+True:
+- median ≈ 0.155 km
+- mean ≈ 35.236 km
+- 90% ≈ 51.479 km
+- 95% ≈ 147.795 km
+
+Conclusion:
+- long_haul=True has substantially longer distance distribution,
+  especially in upper percentiles.
+- Median still overlaps strongly.
+- Do not redefine long_haul using distance alone.
+
+
+HOME_BASE:
+
+False:
+- median ≈ 0.040 km
+- mean ≈ 3.023 km
+- 90% ≈ 20.451 km
+
+True:
+- median ≈ 0.056 km
+- mean ≈ 5.141 km
+- 90% ≈ 2.947 km
+
+Conclusion:
+- home_base=True is more concentrated at short distances in the
+  upper-middle distribution.
+- It is not simply equivalent to "short trip".
+
+
+INDUSTRIAL_AREA:
+
+False:
+- median ≈ 0.141 km
+- mean ≈ 8.020 km
+- 90% ≈ 69.627 km
+
+True:
+- median ≈ 0.107 km
+- mean ≈ 11.423 km
+- 90% ≈ 31.651 km
+
+Conclusion:
+- industrial_area=True is concentrated toward shorter distances in
+  much of the distribution, but long tracks still exist.
+
+
+REST_AREA:
+
+False:
+- median ≈ 0.114 km
+- mean ≈ 6.014 km
+
+True:
+- median ≈ 0.991 km
+- mean ≈ 96.070 km
+
+Conclusion:
+- rest_area=True has a substantially longer distance distribution.
+
+
+SERVICE_AREA_FUEL:
+
+False:
+- median ≈ 0.114 km
+- mean ≈ 7.014 km
+
+True:
+- median ≈ 1.468 km
+- mean ≈ 83.388 km
+
+Conclusion:
+- service_area_fuel=True has a substantially longer distance distribution.
+
+
+============================================================
+24. DISTANCE vs AVG_SPEED
+============================================================
+
+Pearson correlation:
+r = 0.475953
+
+Spearman correlation:
+rho = 0.765732
+
+Conclusion:
+- Moderate linear association.
+- Strong monotonic association.
+- Relationship is nonlinear and affected by extreme values.
+- Distance alone cannot define speed anomalies.
+
+
+Distance decile analysis:
+- Typical avg_speed generally increases with distance.
+- Short-distance groups have low typical speeds.
+- Higher-distance groups have substantially higher typical speeds.
+- Extreme avg_speed values appear across multiple distance ranges.
+
+Conclusion:
+- Distance and speed are related, but not interchangeable.
+
+
+============================================================
+25. DISTANCE vs DURATION
+============================================================
+
+Pearson correlation:
+r = 0.817483
+
+Spearman correlation:
+rho = 0.883185
+
+Conclusion:
+- Strong positive linear relationship.
+- Very strong monotonic relationship.
+- Distance is strongly informative about duration.
+- Significant variation remains around the main relationship.
+
+Scatter plot on log-log axes showed:
+1. Dense short-distance/short-duration population
+2. Main diagonal distance-duration relationship
+3. Short-distance/long-duration population
+4. Long-distance/short-duration population
+5. Long-distance/long-duration population
+
+Important:
+- Multiple distance-duration regimes appear to exist.
+- This supports later operational-pattern clustering.
+- These regions should NOT yet be treated as predefined clusters.
+
+
+============================================================
+26. DURATION vs AVG_SPEED
+============================================================
+
+Pearson correlation:
+r = 0.352977
+
+Spearman correlation:
+rho = 0.448538
+
+Conclusion:
+- Only moderate association.
+- Pairwise correlation is not sufficient to explain the relationship
+  because speed is itself related to distance and duration.
+
+
+============================================================
+27. SPEED-DURATION-DISTANCE CONSISTENCY
+============================================================
+
+For valid moving tracks:
+
+implied speed =
+distance / duration
+
+converted to km/h for analysis.
+
+Valid records:
+- 149,876
+
+Implied speed distribution:
+- mean = 13.18 km/h
+- median = 2.21 km/h
+- 75% = 12.67 km/h
+- 90% = 49.38 km/h
+- 95% = 63.43 km/h
+- 99% = 76.98 km/h
+- 99.9% = 179.23 km/h
+- max = 4,430.86 km/h
+
+Conclusion:
+- Distribution is extremely right-skewed.
+- Extreme implied speeds exist.
+- Extreme implied speed is a diagnostic symptom, NOT a standalone
+  validity criterion.
+
+
+============================================================
+28. IMPLIED SPEED EXTREME-VALUE INVESTIGATION
+============================================================
+
+Top implied-speed records contain combinations of:
+- extremely short duration
+- large distance relative to duration
+- avg_speed far above max_speed
+- negative n_signal_loss
+- high HDOP in some cases
+- other previously identified telemetry-quality issues
+
+Example:
+Track 102170:
+- distance = 17,535 m
+- duration = 16.815 s
+- avg_speed = 1042.82 m/s
+- max_speed = 0.07 m/s
+- implied speed ≈ 3,754 km/h
+- avg_hdop ≈ 0.58
+- n_signal_loss = -19,062
+
+This cannot represent a genuine truck operating at the reported
+track-level average speed.
+
+Earlier raw telemetry investigations showed that:
+- some extreme track-level avg_speed values are not supported by raw speed
+  telemetry
+- some genuinely high-speed tracks ARE supported by raw telemetry
+
+Therefore:
+
+DO NOT use:
+implied_speed > X => invalid
+
+DO NOT use:
+max_speed > X => invalid
+
+Instead:
+- use implied speed as a diagnostic/derived feature
+- combine it with telemetry consistency and quality information
+- preserve raw observations
+
+
+============================================================
+29. SHORT-DURATION + HIGH-SPEED INVESTIGATION
+============================================================
+
+Temporary screening:
+duration < 60 sec
+AND
+avg_speed > 20 m/s
+
+Observed group:
+- substantially higher avg_speed
+- substantially higher max_speed
+- median HDOP ≈ 4.13
+- median distance ≈ 323.5 m
+
+Other tracks:
+- median HDOP ≈ 0.81
+- median distance ≈ 116 m
+
+Conclusion:
+- Short-duration/high-speed records are a useful screening population.
+- They often have higher HDOP and telemetry-quality concerns.
+- But some high-speed tracks are genuinely supported by raw telemetry.
+- High HDOP does not prove invalidity.
+
+No final hard threshold created from this screening.
+
+
+============================================================
+30. RAW SPEED TELEMETRY INVESTIGATION
+============================================================
+
+Several representative tracks were checked against their raw speed files.
+
+Important findings:
+
+A. Summary inconsistency:
+Some track-level avg_speed values differ dramatically from raw
+telemetry mean.
+
+Examples:
+- Track 427:
+    track avg ≈ 61.99 m/s
+    raw mean ≈ 19.85 m/s
+    raw max ≈ 23.61 m/s
+    HDOP ≈ 10-13.8
+
+- Track 124857:
+    track avg ≈ 34.62 m/s
+    raw mean ≈ 0.66 m/s
+    raw max ≈ 2.41 m/s
+
+- Track 89941:
+    track avg ≈ 29.72 m/s
+    raw mean ≈ 0.032 m/s
+    raw max ≈ 0.08 m/s
+
+B. Genuine high-speed telemetry:
+Track 3851:
+    track avg ≈ 59.01 m/s
+    raw mean ≈ 62.40 m/s
+    raw max ≈ 69.25 m/s
+
+Thus:
+- High track speed does not automatically mean bad data.
+- Track-level summary avg_speed can be unreliable.
+- Raw telemetry should be preferred for detailed speed analysis when
+  available and sufficiently populated.
+
+No universal speed threshold should be used as a validity rule.
+
+
+============================================================
+31. DURATION / SPEED CONSISTENCY
+============================================================
+
+For valid positive-duration records:
+
+speed_ratio =
+avg_speed / (distance / duration)
+
+Results:
+- count = 149,876
+- mean ≈ 0.9983
+- median ≈ 1.0001
+- 95% ≈ 1.0247
+- 99% ≈ 1.0444
+- max ≈ 4.389
+
+Absolute difference between avg_speed and distance/duration:
+- mean ≈ 0.000136 m/s
+- median ≈ 0.000355 m/s
+- 95% ≈ 0.004494 m/s
+- 99% ≈ 0.004910 m/s
+- max ≈ 0.1081 m/s
+
+349 tracks had ratio >1.10.
+
+Investigation showed that many large ratios occur at extremely low
+speeds where avg_speed is rounded to 0.01 m/s.
+
+Conclusion:
+- Duration is internally consistent for the overwhelming majority
+  of normal moving records.
+- Ratio mismatches are not automatically duration errors.
+- Do not create an arbitrary duration consistency cutoff.
+
+
+============================================================
+32. FINAL CANDIDATE DATA-QUALITY FLAGS
+============================================================
+
+The following flags should be considered for the processed dataset.
+
+1. insufficient_telemetry
+   True when the track has missing core telemetry because the associated
+   raw speed file contains only ~1-2 observations / extremely short
+   telemetry span.
+
+2. duration_invalid
+   True when:
+       duration_seconds < 0
+
+3. distance_missing
+   True when:
+       distance is NaN
+
+4. avg_speed_missing
+   True when:
+       avg_speed is NaN
+
+5. avg_speed_negative
+   True when:
+       avg_speed < 0
+
+6. avg_speed_gt_max_speed
+   True when:
+       avg_speed > max_speed
+   Interpretation:
+       track-level summary inconsistency.
+   Do not automatically delete the record.
+
+7. n_signal_loss_negative
+   True when:
+       n_signal_loss < 0
+
+8. d_signal_loss_invalid
+   Potentially true when:
+       d_signal_loss < 0
+   Current EDA found NO negative d_signal_loss values.
+
+9. r_signal_loss_missing
+   True when:
+       r_signal_loss is NaN
+
+10. r_signal_loss_out_of_range
+    True when:
+        r_signal_loss < 0 OR r_signal_loss > 1
+
+11. zero_distance
+    True when:
+        distance == 0
+
+12. zero_distance_speed_issue
+    True when:
+        distance == 0 AND max_speed > 1 m/s
+
+13. track_gap_missing
+    True when:
+        track_gap is NaN
+
+IMPORTANT:
+- zero_distance is NOT automatically invalid.
+- high max_speed is NOT automatically invalid.
+- high implied_speed is NOT automatically invalid.
+- long duration is NOT automatically invalid.
+- short duration is NOT automatically invalid.
+- short distance is NOT automatically invalid.
+
+
+============================================================
+33. PROPOSED PROCESSED-VALUE RULES
+============================================================
+
+Raw columns must remain unchanged.
+
+For modeling/analysis copies:
+
+avg_speed:
+- negative values -> NaN
+- potentially unreliable where avg_speed > max_speed
+- raw telemetry-derived speed features preferred when available
+
+n_signal_loss:
+- negative values -> NaN
+
+r_signal_loss:
+- values outside [0,1] -> NaN
+- missing values remain missing
+
+duration:
+- negative duration -> NaN for duration-dependent modeling
+- timestamps themselves remain preserved
+
+distance:
+- missing remains NaN
+- zero distance remains zero
+
+track_gap:
+- missing remains NaN
+- do not impute with zero
+
+No blanket row deletion should be performed based solely on any one flag.
+
+
+============================================================
+34. VARIABLES THAT SHOULD NOT BE AUTOMATICALLY REMOVED
+============================================================
+
+Do NOT remove simply because they are unusual:
+
+- short-distance tracks
+- zero-distance tracks
+- long-duration tracks
+- high-speed tracks
+- large track_gap
+- rest_area=True
+- service_area_fuel=True
+- long_haul=True
+- industrial_area=True
+- home_base=True
+
+These may represent genuine operational patterns.
+
+This is especially important because the project goal includes:
+- operational pattern discovery
+- anomaly detection
+- utilization analysis
+
+Removing unusual observations too aggressively could destroy the
+very patterns the project is supposed to discover.
+
+
+============================================================
+35. IMPORTANT FEATURE-ENGINEERING PRINCIPLES FROM EDA
+============================================================
+
+1. Distance is highly right-skewed.
+   Consider log transformation or robust scaling.
+
+2. Duration is highly right-skewed.
+   Consider log transformation or robust scaling.
+
+3. Distance and duration are strongly related.
+   Avoid excessive redundant features.
+
+4. avg_speed is not always trustworthy as a summary field.
+   Raw speed telemetry should be used to derive robust speed features
+   where possible.
+
+5. max_speed appears much more consistent with raw telemetry in inspected
+   samples, but extreme values should still be interpreted contextually.
+
+6. Context variables are not interchangeable:
+   - long_haul
+   - home_base
+   - industrial_area
+   - rest_area
+   - service_area_fuel
+
+7. axle_class is categorical/configuration-like.
+
+8. Vehicle specifications have structured missingness.
+
+9. Dataset is episodic rather than continuously monitored.
+
+10. Vehicle-level observation counts are highly imbalanced.
+
+11. tour_id is not vehicle-specific.
+
+12. Raw speed data should be processed separately rather than loading all
+    high-resolution telemetry into memory at once.
+
+
+============================================================
+36. CURRENT EDA STATUS
+============================================================
+
+COMPLETED:
+[X] Dataset structure
+[X] track_id
+[X] vehicle_id
+[X] tour_id
+[X] timestamps
+[X] duration
+[X] temporal coverage
+[X] fleet_test_id
+[X] fleet specifications
+[X] missing telemetry
+[X] missing r_signal_loss
+[X] negative avg_speed
+[X] negative n_signal_loss
+[X] signal-loss definitions
+[X] r_signal_loss > 1
+[X] max_speed
+[X] avg_speed > max_speed
+[X] track_gap
+[X] distance
+[X] zero-distance tracks
+[X] short-distance/long-duration tracks
+[X] context variables
+[X] distance by context
+[X] duration by context
+[X] distance vs avg_speed
+[X] distance vs duration
+[X] duration vs avg_speed
+[X] implied speed
+[X] extreme implied-speed records
+[X] short-duration/high-speed population
+[X] representative raw speed telemetry checks
+
+
+============================================================
+37. EDA PRINCIPLE GOING FORWARD
+============================================================
+
+Do NOT repeat completed investigations unless a new analysis depends on
+them.
+
+Before creating final cleaning/modeling code:
+- review this file
+- consolidate flags
+- decide which records/features are excluded for each model
+- distinguish:
+    invalid data
+    suspicious data
+    rare but valid operational behavior
+- preserve raw values
+- document every transformation
+
+A record can be:
+- valid operational data
+- valid but unusual
+- suspicious
+- invalid for a particular analysis
+- insufficiently observed
+
+These categories should NOT be collapsed into one generic "bad row"
+category.
+
+
+============================================================
+38. KEY PROJECT PRINCIPLE
+============================================================
+
+The purpose of this project is NOT to make the dataset look clean.
+
+The purpose is to understand real fleet operational behavior.
+
+Therefore:
+
+DATA QUALITY HANDLING MUST PRESERVE REAL VARIABILITY.
+
+We should only remove/impute information when there is evidence that
+the value is invalid or unusable for a particular model.
+
+Unusual operational patterns should generally be retained because they
+may later become:
+- clusters
+- operational profiles
+- anomalies
+- vehicle suitability signals
+- fleet utilization insights.
