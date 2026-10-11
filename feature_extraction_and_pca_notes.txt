@@ -1,0 +1,359 @@
+DT-CARGO VEHICLE TELEMETRY PROJECT
+FEATURE EXTRACTION AND PCA — WORKING NOTES
+Date: 11 October 2026
+
+============================================================
+1. PROJECT CONTEXT
+============================================================
+
+Project title:
+Vehicle Telemetry Analysis for Improving Efficiency in Logistics Fleet Operations
+
+Dataset:
+DT-CARGO — anonymized recorded truck driving and operation data.
+
+This note documents the feature-engineering context relevant to the PCA work
+and the PCA steps completed in this session. It records actual values reported
+during the session and separates completed work from work not yet performed.
+
+============================================================
+2. FEATURE EXTRACTION / FEATURE ENGINEERING CONTEXT
+============================================================
+
+Main input:
+data/processed/engineered_tracks.csv
+
+The engineered dataset contains 151,598 tracks and 63 columns.
+
+Important source and engineered fields include:
+- track_id, vehicle_id, tour_id
+- start_time, stop_time
+- distance, track_gap
+- avg_speed, max_speed
+- n_signal_loss, d_signal_loss, r_signal_loss
+- avg_hdop
+- operational-context booleans such as home_base, long_haul, rest_area,
+  service_area_fuel, industrial_area
+- fleet specifications such as fleet_test_id, gross_vehicle_weight,
+  total_mass_with_trailer, axle_class
+- telemetry summaries such as raw_observations, telemetry_span_seconds,
+  raw_speed_mean, raw_speed_std, raw_speed_min, raw_speed_max,
+  raw_hdop_mean, raw_hdop_median, raw_hdop_max, missing_speed_count,
+  and missing_hdop_count
+- engineered duration, quality flags, and unit-converted features
+
+Unit notes:
+- distance is measured in metres; distance_km is kilometres.
+- avg_speed and max_speed are in metres per second; their _kmh equivalents
+  are converted to kilometres per hour.
+- d_signal_loss is distance associated with signal loss in metres, NOT
+  signal-loss duration.
+- r_signal_loss represents signal-loss distance divided by recorded track
+  distance. Valid values are expected to be within [0, 1].
+- n_signal_loss is a count of signal-loss events.
+
+Data-quality decisions relevant to this analysis:
+- Preserve original raw data and quality flags.
+- Negative n_signal_loss values are treated as invalid for the processed
+  count (n_signal_loss_valid is missing where invalid); do not overwrite
+  the original raw field.
+- Some tracks have signal-loss ratios outside the expected range or
+  inconsistent signal-loss summaries. Do not silently interpret these
+  values as reliable.
+- Very high signal-loss counts alone were not used as a reason to declare
+  a track invalid because the count's calculation could not be fully
+  reconstructed from raw speed telemetry.
+- avg_speed_kmh and max_speed_kmh are unit conversions of avg_speed and
+  max_speed; avoid including both units of the same feature in one PCA input.
+- raw_speed_min was investigated and excluded from the initial PCA input:
+  99.46% of nonmissing operational tracks had raw_speed_min equal to zero.
+  There was no evidence that zero values should be flagged invalid.
+- A speed-distance validity flag exists for tracks whose average speed
+  exceeds 120 km/h. Such rows were retained in the engineered dataset,
+  with values preserved and flags available for audit. The flag was used
+  to avoid including implausible average-speed values in the initial PCA
+  input.
+
+============================================================
+3. OPERATIONAL TRACK FILTER
+============================================================
+
+The PCA experiment was restricted to operational tracks with:
+    distance_km > 1
+
+Results:
+- Original engineered dataset: 151,598 rows
+- Retained operational tracks: 43,125 rows
+- Excluded rows: 108,473
+- Minimum retained distance: 1.001 km
+- Duplicate track IDs in this subset: none reported
+
+There were 49 missing distance_km values in the full dataset; these do not
+satisfy the distance_km > 1 filter and are excluded automatically.
+
+Subset code:
+    pca_full = features.loc[features["distance_km"] > 1].copy()
+
+============================================================
+4. PCA FEATURE SELECTION
+============================================================
+
+The initial candidate list contained 15 numerical features. Redundant
+features were removed after checking missingness, distributions, and
+correlations. For example:
+- duration_minutes and telemetry_span_seconds were highly correlated
+  (about 0.996).
+- raw_observations and telemetry_span_seconds were highly correlated
+  (about 0.996).
+- raw_speed_max and max_speed_kmh were almost identical (correlation
+  about 1.000).
+- avg_hdop and raw_hdop_mean were effectively identical in this subset.
+- raw_speed_min was almost always zero and was excluded.
+
+The final 10 features used for this initial PCA experiment were:
+1. distance_km
+2. duration_minutes
+3. track_gap
+4. raw_speed_mean_kmh
+5. raw_speed_std
+6. max_speed_kmh
+7. d_signal_loss
+8. r_signal_loss_valid
+9. avg_hdop
+10. raw_hdop_max
+
+Code:
+    selected_features = [
+        "distance_km",
+        "duration_minutes",
+        "track_gap",
+        "raw_speed_mean_kmh",
+        "raw_speed_std",
+        "max_speed_kmh",
+        "d_signal_loss",
+        "r_signal_loss_valid",
+        "avg_hdop",
+        "raw_hdop_max",
+    ]
+    X_full_pca = pca_full[selected_features].copy()
+
+Important qualification:
+Although the source engineered dataset has 63 columns, PCA was not applied
+indiscriminately to every column. IDs, timestamps, categorical/context
+flags, quality labels, and redundant or unsuitable fields were not fed
+directly into PCA. This is an initial PCA on 10 selected numerical features
+from the 63-column dataset.
+
+============================================================
+5. TRANSFORMATIONS AND MISSING-VALUE HANDLING
+============================================================
+
+The following features were transformed with log1p on a copy:
+- track_gap
+- d_signal_loss
+- avg_hdop
+- distance_km
+- duration_minutes
+
+Code:
+    X_transformed = X_full_pca.copy()
+    log_features = [
+        "track_gap", "d_signal_loss", "avg_hdop",
+        "distance_km", "duration_minutes"
+    ]
+    for col in log_features:
+        if (X_transformed[col].dropna() < 0).any():
+            raise ValueError(f"Negative values found in {col}")
+        X_transformed[col] = np.log1p(X_transformed[col])
+
+Skewness changes:
+- distance_km: about 2.079 to -0.077
+- duration_minutes: about 1.910 to -0.052
+- d_signal_loss: about 10.017 to 0.235
+- track_gap: about 10.421 to 2.400
+- avg_hdop: about 5.389 to 1.856
+
+The signal-loss ratio was kept on its original scale for this first PCA
+experiment. It is bounded between 0 and 1, has many zeros, and had 20
+missing values in the operational subset.
+
+Rows with missing r_signal_loss_valid were excluded from this experiment.
+These 20 rows corresponded to inconsistent signal-loss telemetry in the
+operational subset. Other missing values in selected features were
+median-imputed.
+
+Code:
+    X_pca_ready = X_transformed.loc[
+        X_transformed["r_signal_loss_valid"].notna()
+    ].copy()
+
+    from sklearn.impute import SimpleImputer
+    imputer = SimpleImputer(strategy="median")
+    X_imputed = pd.DataFrame(
+        imputer.fit_transform(X_pca_ready),
+        columns=X_pca_ready.columns,
+        index=X_pca_ready.index,
+    )
+
+Reported subsequent PCA row count: 43,105.
+
+Median imputation does not recover the true unknown values. It replaces
+missing values with the median learned from available values in each feature.
+
+============================================================
+6. STANDARDIZATION
+============================================================
+
+PCA is sensitive to feature scale. The 10 features were standardized with
+StandardScaler after imputation.
+
+Code:
+    from sklearn.preprocessing import StandardScaler
+    scaler = StandardScaler()
+    X_scaled = pd.DataFrame(
+        scaler.fit_transform(X_imputed),
+        columns=X_imputed.columns,
+        index=X_imputed.index,
+    )
+
+The intended checks were approximately zero mean and unit population
+standard deviation for each feature. Standardized matrix shape: (43105, 10).
+
+============================================================
+7. PCA FIT AND EXPLAINED VARIANCE
+============================================================
+
+PCA was fit with all 10 components:
+    from sklearn.decomposition import PCA
+    pca = PCA()
+    X_pca = pca.fit_transform(X_scaled)
+
+Reported output shape: (43105, 10)
+
+Actual explained variance results:
+
+Component | Eigenvalue | Individual variance (%) | Cumulative variance (%)
+PC1       | 4.1334     | 41.3332                  | 41.3332
+PC2       | 1.7548     | 17.5478                  | 58.8810
+PC3       | 1.0810     | 10.8100                  | 69.6910
+PC4       | 0.8928     | 8.9277                   | 78.6187
+PC5       | 0.7179     | 7.1786                   | 85.7973
+PC6       | 0.5212     | 5.2115                   | 91.0088
+PC7       | 0.3855     | 3.8546                   | 94.8634
+PC8       | 0.3075     | 3.0748                   | 97.9382
+PC9       | 0.1451     | 1.4508                   | 99.3890
+PC10      | 0.0611     | 0.6110                   | 100.0000
+
+Interpretation:
+- PC1 alone explains 41.33% of standardized feature variance.
+- PC1-PC2 explain 58.88%.
+- PC1-PC5 explain 85.80%.
+- PC1-PC6 explain 91.01%.
+- Six components reduce the representation from 10 dimensions to 6 while
+  retaining about 91.01% of variance.
+- The 90% threshold is a practical criterion, not a universal rule and not
+  proof that PCA improves a downstream model.
+- Explained variance is feature variance, not the percentage of tracks
+  retained. All 43,105 rows remain in the reduced representation.
+
+Component-selection code:
+    variance_threshold = 0.90
+    n_components = np.argmax(
+        np.cumsum(pca.explained_variance_ratio_) >= variance_threshold
+    ) + 1
+    X_pca_reduced = X_pca[:, :n_components]
+
+Reported output:
+- Original features: 10
+- Components retained: 6
+- Cumulative variance retained: 91.01%
+- Reduced data shape: (43105, 6)
+
+============================================================
+8. PCA LOADINGS AND INTERPRETATION
+============================================================
+
+Loadings were calculated using:
+    loadings = pd.DataFrame(
+        pca.components_.T,
+        index=X_scaled.columns,
+        columns=[f"PC{i+1}" for i in range(len(pca.components_))],
+    )
+
+Actual loadings for the six retained components:
+
+Feature                PC1      PC2      PC3      PC4      PC5      PC6
+distance_km            0.4634  -0.0887   0.0003  -0.1491   0.0352  -0.2284
+duration_minutes       0.3981  -0.0485  -0.1019  -0.3523   0.0156  -0.4077
+track_gap              0.0396   0.3002   0.7398   0.0532  -0.5513  -0.1637
+raw_speed_mean_kmh     0.4354  -0.0644   0.1063  -0.0040   0.0189  -0.1507
+raw_speed_std          0.3561  -0.1564   0.1298   0.4991   0.1770   0.4024
+max_speed_kmh          0.4301  -0.0405   0.1119   0.3414   0.0856   0.1226
+d_signal_loss          0.3102   0.2507  -0.4250  -0.1587  -0.3200   0.1086
+r_signal_loss_valid    0.0446   0.5124  -0.4299   0.4199  -0.3374  -0.0320
+avg_hdop              -0.0447   0.5592   0.0920   0.1941   0.6260  -0.4195
+raw_hdop_max           0.1540   0.4809   0.1665  -0.4960   0.2178   0.6053
+
+Tentative interpretations based on loadings:
+- PC1: broad trip scale and speed pattern. Distance, average speed, maximum
+  speed, duration, speed standard deviation, and signal-loss distance load
+  positively.
+- PC2: primarily GPS-quality and signal-loss ratio pattern. avg_hdop,
+  r_signal_loss_valid, and raw_hdop_max have the largest positive loadings.
+- PC3: dominated by track_gap, contrasted with r_signal_loss_valid and
+  d_signal_loss.
+- PC4: contrasts speed variability and signal-loss ratio with maximum HDOP.
+- PC5: contrasts average HDOP with track_gap and signal-loss measures.
+- PC6: a further contrast involving maximum HDOP, average HDOP, duration,
+  and speed variability.
+
+Interpretation cautions:
+- Loadings show each feature's contribution/direction to a component.
+- The sign of an entire component is arbitrary.
+- Component names are tentative summaries, not validated domain labels.
+- PCA components are statistical combinations, not causal explanations.
+- Higher speed/distance does not automatically mean better logistics
+  efficiency; fuel consumption and cost are not directly established here.
+
+============================================================
+9. SCREE PLOT
+============================================================
+
+A scree plot was created with bars for individual explained variance,
+a line for cumulative explained variance, and a horizontal 90% threshold.
+
+The plot shows PC6 crossing the 90% threshold at 91.01%. There is no
+perfectly sharp elbow, so six components were chosen based on the 90%
+cumulative-variance criterion, not a definitive elbow.
+
+============================================================
+10. CURRENT STATUS AND NEXT STEPS
+============================================================
+
+Completed:
+- Selected operational tracks using distance_km > 1.
+- Audited candidate features and removed redundant/unsuitable features.
+- Applied log1p transformations to five skewed nonnegative features.
+- Excluded rows with missing r_signal_loss_valid for this PCA experiment.
+- Median-imputed other missing feature values.
+- Standardized the 10 selected numerical features.
+- Fit PCA with all 10 components.
+- Calculated explained variance and cumulative variance.
+- Selected six components for a 90% variance target.
+- Inspected and interpreted loadings.
+- Created a scree plot.
+
+Not yet done:
+- K-means clustering comparison on the 10 standardized original features
+  versus the six PCA components.
+- Selecting/validating cluster count, interpreting clusters, and assessing
+  whether PCA is beneficial for the project's operational-pattern goals.
+
+Next proposed analysis:
+Compare K-means on X_scaled (10 standardized features) and X_pca_reduced
+(6 PCA components) over a reasonable range of k values using silhouette
+scores. Use the same 43,105 tracks for both experiments and interpret
+results cautiously; a better silhouette score alone does not establish
+business usefulness.
+
+End of notes.
