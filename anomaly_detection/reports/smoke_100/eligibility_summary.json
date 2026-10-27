@@ -1,0 +1,27 @@
+{
+  "input_tracks": 100,
+  "models": {
+    "core_four_feature": {
+      "eligible": 70,
+      "eligible_with_warnings": 30,
+      "ineligible": 0,
+      "ineligibility_reasons": {},
+      "missing_required_feature_counts": {}
+    },
+    "extended_six_feature": {
+      "eligible": 70,
+      "eligible_with_warnings": 30,
+      "ineligible": 0,
+      "ineligibility_reasons": {},
+      "missing_required_feature_counts": {}
+    }
+  },
+  "feature_definitions": {
+    "raw_speed_mean_kmh": "Mean raw speed in km/h",
+    "raw_speed_std": "Sample standard deviation in m/s",
+    "low_speed_time_pct_03": "0-100 percentage of valid time below 0.3 m/s",
+    "stop_episode_count_03": "Stop episodes of at least 30 seconds",
+    "duration_minutes": "Track duration in minutes",
+    "distance_km": "Recorded distance in kilometres; zero is retained"
+  }
+}
