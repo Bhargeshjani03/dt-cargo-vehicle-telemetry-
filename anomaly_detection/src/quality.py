@@ -114,10 +114,11 @@ def assess_track_quality(
 ) -> dict:
     """Return quality flags and a model-specific track eligibility status.
 
-    Tracks with less than 50% valid telemetry coverage are ineligible; coverage
-    from 50% to below 80% is retained with a warning. Coverage is valid interval
-    time divided by recorded track duration. An optional minimum valid-time
-    cutoff remains available for explicit experiments.
+    Coverage thresholds are diagnostic warnings, not standalone eligibility
+    cutoffs: the faculty brief does not establish a minimum coverage ratio.
+    Coverage is valid interval time divided by recorded track duration. Tracks
+    still require sufficient valid telemetry and every required feature. An
+    optional minimum valid-time cutoff remains available for explicit studies.
     """
     if (
         min_valid_telemetry_seconds is not None
@@ -191,8 +192,6 @@ def assess_track_quality(
     blocking_reasons = []
     if flags["insufficient_telemetry"]:
         blocking_reasons.append("insufficient_telemetry")
-    if flags["telemetry_coverage_inadequate"]:
-        blocking_reasons.append("telemetry_coverage_inadequate")
     if "duration_minutes" in required_features and flags["duration_invalid"]:
         blocking_reasons.append("duration_invalid")
     if "distance_km" in required_features and flags["distance_missing"]:
