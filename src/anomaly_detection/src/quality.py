@@ -23,6 +23,7 @@ QUALITY_FLAG_NAMES = (
     "telemetry_coverage_inadequate",
     "duration_invalid",
     "distance_missing",
+    "distance_negative",
     "avg_speed_missing",
     "avg_speed_negative",
     "avg_speed_gt_max_speed",
@@ -140,7 +141,7 @@ def assess_track_quality(
     flags["insufficient_telemetry"] = bool(insufficient)
 
     duration = _duration_seconds(track_metadata)
-    flags["duration_invalid"] = duration is None or duration < 0
+    flags["duration_invalid"] = duration is None or duration <= 0
 
     telemetry_coverage_ratio = None
     if duration is not None and duration > 0:
@@ -162,6 +163,7 @@ def assess_track_quality(
     track_gap = _as_finite_float(_get_value(track_metadata, "track_gap"))
 
     flags["distance_missing"] = distance is None
+    flags["distance_negative"] = distance is not None and distance < 0
     flags["avg_speed_missing"] = avg_speed is None
     flags["avg_speed_negative"] = avg_speed is not None and avg_speed < 0
     flags["avg_speed_gt_max_speed"] = (
@@ -195,9 +197,11 @@ def assess_track_quality(
         blocking_reasons.append("telemetry_coverage_inadequate")
     if "duration_minutes" in required_features and flags["duration_invalid"]:
         blocking_reasons.append("duration_invalid")
-    if "distance_km" in required_features and flags["distance_missing"]:
-        blocking_reasons.append("distance_missing")
-
+    if "distance_km" in required_features:
+        if flags["distance_missing"]:
+            blocking_reasons.append("distance_missing")
+        if flags["distance_negative"]:
+            blocking_reasons.append("distance_negative")
     reason_codes = [name for name, value in flags.items() if value]
 
     if blocking_reasons:
