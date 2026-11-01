@@ -1,0 +1,62 @@
+{
+  "input_tracks": 151598,
+  "models": {
+    "core_four_feature": {
+      "eligible": 100379,
+      "eligible_with_warnings": 49372,
+      "ineligible": 1847,
+      "ineligibility_reasons": {
+        "insufficient_telemetry": 70,
+        "missing_required_feature:low_speed_time_pct_03": 14,
+        "missing_required_feature:raw_speed_mean_kmh": 9,
+        "missing_required_feature:raw_speed_std": 14,
+        "missing_required_feature:stop_episode_count_03": 9,
+        "telemetry_coverage_inadequate": 1838
+      },
+      "missing_required_feature_counts": {
+        "low_speed_time_pct_03": 14,
+        "raw_speed_mean_kmh": 9,
+        "raw_speed_std": 14,
+        "stop_episode_count_03": 9
+      }
+    },
+    "extended_six_feature": {
+      "eligible": 100379,
+      "eligible_with_warnings": 49372,
+      "ineligible": 1847,
+      "ineligibility_reasons": {
+        "distance_missing": 49,
+        "duration_invalid": 9,
+        "insufficient_telemetry": 70,
+        "missing_required_feature:distance_km": 49,
+        "missing_required_feature:duration_minutes": 9,
+        "missing_required_feature:low_speed_time_pct_03": 14,
+        "missing_required_feature:raw_speed_mean_kmh": 9,
+        "missing_required_feature:raw_speed_std": 14,
+        "missing_required_feature:stop_episode_count_03": 9,
+        "telemetry_coverage_inadequate": 1838
+      },
+      "missing_required_feature_counts": {
+        "distance_km": 49,
+        "duration_minutes": 9,
+        "low_speed_time_pct_03": 14,
+        "raw_speed_mean_kmh": 9,
+        "raw_speed_std": 14,
+        "stop_episode_count_03": 9
+      }
+    }
+  },
+  "feature_definitions": {
+    "raw_speed_mean_kmh": "Mean raw speed in km/h",
+    "raw_speed_std": "Sample standard deviation in m/s",
+    "low_speed_time_pct_03": "0-100 percentage of valid time below 0.3 m/s",
+    "stop_episode_count_03": "Stop episodes of at least 30 seconds",
+    "duration_minutes": "Track duration in minutes",
+    "distance_km": "Recorded distance in kilometres; zero is retained"
+  },
+  "quality_metric_definitions": {
+    "telemetry_coverage_ratio": "Valid speed interval time divided by recorded track duration; quality diagnostic, not a movement-model input",
+    "telemetry_coverage_low": "Coverage below 80%; eligible with warnings unless below 50%",
+    "telemetry_coverage_inadequate": "Coverage below 50%; ineligible for movement scoring"
+  }
+}

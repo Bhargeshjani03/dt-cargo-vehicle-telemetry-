@@ -1,0 +1,110 @@
+{
+  "core_four_feature": {
+    "model_variant": "core_four_feature",
+    "input_tracks": 151598,
+    "eligible": 100379,
+    "eligible_with_warnings": 51149,
+    "ineligible_or_missing_status": 70,
+    "missing_required_feature_counts": {
+      "raw_speed_mean_kmh": 0,
+      "raw_speed_std": 0,
+      "low_speed_time_pct_03": 0,
+      "stop_episode_count_03": 0
+    },
+    "usable_tracks_with_valid_start_time": 151528,
+    "training_tracks": 121222,
+    "validation_tracks": 30306,
+    "training_period": {
+      "start": "2021-08-26T13:27:59.533000+00:00",
+      "end": "2022-04-11T09:47:41.548000+00:00"
+    },
+    "validation_period": {
+      "start": "2022-04-11T09:54:49.164000+00:00",
+      "end": "2024-02-06T10:36:02.269000+00:00"
+    },
+    "features": [
+      "raw_speed_mean_kmh",
+      "raw_speed_std",
+      "low_speed_time_pct_03",
+      "stop_episode_count_03"
+    ],
+    "transform": "identity",
+    "score_definition": "Negative Isolation Forest decision_function; higher means more unusual, not a probability.",
+    "threshold": 0.1693411117583994,
+    "threshold_policy": {
+      "target_review_rate": 0.02,
+      "validation_score_quantile": 0.98,
+      "actual_validation_alert_rate": 0.020029037154358872
+    },
+    "validation_score_summary": {
+      "min": -0.16931929783072897,
+      "median": 0.04214269894048733,
+      "p90": 0.10778200205448596,
+      "p95": 0.13517079713983562,
+      "p98": 0.1693411117583994,
+      "max": 0.2584502022256904
+    },
+    "validation_flagged_tracks": 607,
+    "known_limitations": [
+      "There are no verified anomaly labels; this is not an accuracy measure.",
+      "The review rate is a policy choice, not anomaly prevalence.",
+      "Flagged tracks are candidates for investigation, not diagnoses."
+    ]
+  },
+  "extended_six_feature": {
+    "model_variant": "extended_six_feature",
+    "input_tracks": 151598,
+    "eligible": 100379,
+    "eligible_with_warnings": 51149,
+    "ineligible_or_missing_status": 70,
+    "missing_required_feature_counts": {
+      "raw_speed_mean_kmh": 0,
+      "raw_speed_std": 0,
+      "low_speed_time_pct_03": 0,
+      "stop_episode_count_03": 0,
+      "duration_minutes": 0,
+      "distance_km": 0
+    },
+    "usable_tracks_with_valid_start_time": 151528,
+    "training_tracks": 121222,
+    "validation_tracks": 30306,
+    "training_period": {
+      "start": "2021-08-26T13:27:59.533000+00:00",
+      "end": "2022-04-11T09:47:41.548000+00:00"
+    },
+    "validation_period": {
+      "start": "2022-04-11T09:54:49.164000+00:00",
+      "end": "2024-02-06T10:36:02.269000+00:00"
+    },
+    "features": [
+      "raw_speed_mean_kmh",
+      "raw_speed_std",
+      "low_speed_time_pct_03",
+      "stop_episode_count_03",
+      "duration_minutes",
+      "distance_km"
+    ],
+    "transform": "identity",
+    "score_definition": "Negative Isolation Forest decision_function; higher means more unusual, not a probability.",
+    "threshold": 0.16399402754291337,
+    "threshold_policy": {
+      "target_review_rate": 0.02,
+      "validation_score_quantile": 0.98,
+      "actual_validation_alert_rate": 0.020029037154358872
+    },
+    "validation_score_summary": {
+      "min": -0.17179528770567853,
+      "median": 0.018397928950817655,
+      "p90": 0.0988702348372919,
+      "p95": 0.1283374627948846,
+      "p98": 0.16399402754291337,
+      "max": 0.2835737066074655
+    },
+    "validation_flagged_tracks": 607,
+    "known_limitations": [
+      "There are no verified anomaly labels; this is not an accuracy measure.",
+      "The review rate is a policy choice, not anomaly prevalence.",
+      "Flagged tracks are candidates for investigation, not diagnoses."
+    ]
+  }
+}
