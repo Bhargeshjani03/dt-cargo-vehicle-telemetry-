@@ -266,10 +266,10 @@ def build_modeling_table(
                 "quality diagnostic, not a movement-model input"
             ),
             "telemetry_coverage_low": (
-                "Coverage below 80%; eligible with warnings unless below 50%"
+                "Coverage below 80%; review warning only, no coverage-ratio exclusion"
             ),
             "telemetry_coverage_inadequate": (
-                "Coverage below 50%; ineligible for movement scoring"
+                "Coverage below 50%; review warning only"
             ),
         },
     }

@@ -174,10 +174,10 @@ def train_variant(
 
     bundle = {
         "model": model,
-        "model_version": f"movement_iforest_{variant}_v1",
+        "model_version": f"movement_iforest_{variant}_v2",
         "feature_names": features,
         "feature_engineering_version": "dt_cargo_movement_v1",
-        "quality_rules_version": "dt_cargo_quality_v1",
+        "quality_rules_version": "dt_cargo_quality_v2",
         "transform": "identity",
         "score_direction": "higher_is_more_anomalous",
         "threshold": threshold,
@@ -194,7 +194,7 @@ def train_variant(
         bundle,
         output_dir.parent.parent
         / "artifacts"
-        / f"movement_iforest_{variant}_v1.joblib",
+        / f"movement_iforest_{variant}_v2.joblib",
     )
     return summary
 
