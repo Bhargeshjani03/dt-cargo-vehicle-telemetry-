@@ -8,7 +8,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.modeling_dataset import build_modeling_table, save_modeling_outputs
+from src.anomaly_detection.src.modeling_dataset import build_modeling_table, save_modeling_outputs
 
 
 def valid_track(track_id, vehicle_id, distance=1000.0, duration=2.0):

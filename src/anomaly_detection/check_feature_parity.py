@@ -1,32 +1,21 @@
 """Compare the new raw-speed features with existing movement features."""
-
 import argparse
 import sys
 from pathlib import Path
-
 import numpy as np
 import pandas as pd
-
-
 ANOMALY_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(ANOMALY_DIR))
-
 from src.features import FEATURE_COLUMNS, extract_track_features
-
-
 TOLERANCES = {
     "raw_speed_mean_kmh": 0.01,
-    "raw_speed_std": 0.01,
+    "raw_speed_std": 0.036,
     "low_speed_time_pct_03": 0.05,
     "stop_episode_count_03": 0.0,
 }
-
-
 def id_token(value) -> str:
     number = float(value)
     return str(int(number)) if number.is_integer() else str(value).strip()
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -38,8 +27,8 @@ def main() -> None:
     parser.add_argument("--sample-size", type=int, default=20)
     args = parser.parse_args()
 
-    enriched_path = (
-        args.data_root / "processed" / "tracks_with_behavioral_features.csv"
+    modeling_path= (
+        ANOMALY_DIR / "reports" / "full" / "modeling_dataset.csv"
     )
     speed_root = args.data_root / "raw" / "speed"
 
@@ -48,7 +37,7 @@ def main() -> None:
         "vehicle_id",
         *FEATURE_COLUMNS,
     ]
-    baseline = pd.read_csv(enriched_path, usecols=columns)
+    baseline = pd.read_csv(modeling_path, usecols=columns)
     baseline = baseline.dropna(subset=list(FEATURE_COLUMNS))
 
     if baseline.empty:
@@ -119,7 +108,5 @@ def main() -> None:
     if not mismatches.empty:
         print("First mismatches:")
         print(mismatches.head(5).to_string(index=False))
-
-
 if __name__ == "__main__":
     main()

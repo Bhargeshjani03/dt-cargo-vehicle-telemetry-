@@ -8,8 +8,8 @@ from typing import Any, Optional, Tuple
 
 import pandas as pd
 
-from src.features import FEATURE_COLUMNS, extract_track_features
-from src.quality import CORE_FEATURES, QUALITY_FLAG_NAMES, assess_track_quality
+from src.anomaly_detection.src.features import FEATURE_COLUMNS, extract_track_features
+from src.anomaly_detection.src.quality import CORE_FEATURES, QUALITY_FLAG_NAMES, assess_track_quality
 
 
 EXTENDED_FEATURES = CORE_FEATURES + ("duration_minutes", "distance_km")
@@ -254,7 +254,7 @@ def build_modeling_table(
         },
         "feature_definitions": {
             "raw_speed_mean_kmh": "Mean raw speed in km/h",
-            "raw_speed_std": "Sample standard deviation in m/s",
+            "raw_speed_std": "Sample standard deviation in km/h",
             "low_speed_time_pct_03": "0-100 percentage of valid time below 0.3 m/s",
             "stop_episode_count_03": "Stop episodes of at least 30 seconds",
             "duration_minutes": "Track duration in minutes",

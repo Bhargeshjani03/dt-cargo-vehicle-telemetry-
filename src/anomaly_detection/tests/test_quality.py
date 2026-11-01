@@ -6,7 +6,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.quality import CORE_FEATURES, assess_track_quality
+from src.anomaly_detection.src.quality import CORE_FEATURES, assess_track_quality
 
 
 def valid_metadata():
