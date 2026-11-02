@@ -6,7 +6,8 @@ data/interim/
 
 # Processed datasets
 data/processed/
-
+src/anomaly_detection/reports/cluster_models/
+src/anomaly_detection/reports/modeling_dataset.csv
 # Trained models
 models/
 

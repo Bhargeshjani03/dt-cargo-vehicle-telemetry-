@@ -12,7 +12,7 @@ sys.path.insert(
     str(Path(__file__).resolve().parents[1])
 )
 
-from src.anomaly_detection.src.features import (
+from src.features import (
     FEATURE_COLUMNS,
     extract_track_features,
 )

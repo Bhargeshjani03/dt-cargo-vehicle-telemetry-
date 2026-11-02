@@ -1,4 +1,3 @@
-
 """Movement feature extraction from one track's raw speed telemetry."""
 
 from typing import Any
@@ -359,4 +358,39 @@ def extract_track_features(raw_speed_telemetry: Any) -> dict:
         "valid_interval_count": valid_interval_count,
         "valid_telemetry_time_seconds": valid_time_seconds,
         "excluded_interval_count": excluded_interval_count,
+    }
+
+
+def get_telemetry_evidence(raw_speed_telemetry: Any) -> dict:
+    """Return telemetry evidence using the feature extraction rules.
+
+    Invalid timestamps, invalid/negative speeds, duplicate timestamps, and
+    oversized time gaps are handled by extract_track_features(), ensuring
+    quality assessment uses exactly the same interval-validation rules.
+    """
+
+    if (
+        raw_speed_telemetry is None
+        or not hasattr(raw_speed_telemetry, "columns")
+        or not {"epoch", "speed"}.issubset(raw_speed_telemetry.columns)
+    ):
+        return {
+            "valid_observations": 0,
+            "telemetry_span_seconds": 0.0,
+            "valid_interval_count": 0,
+            "valid_telemetry_time_seconds": 0.0,
+        }
+
+    features = extract_track_features(raw_speed_telemetry)
+
+    return {
+        "valid_observations": (
+            features["observation_count"]
+            - features["invalid_observation_count"]
+        ),
+        "telemetry_span_seconds": features["telemetry_span_seconds"],
+        "valid_interval_count": features["valid_interval_count"],
+        "valid_telemetry_time_seconds": (
+            features["valid_telemetry_time_seconds"]
+        ),
     }

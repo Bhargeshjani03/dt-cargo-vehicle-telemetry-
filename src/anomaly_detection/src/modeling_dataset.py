@@ -1,3 +1,4 @@
+
 """Build the track-level modelling table from metadata and raw speed files."""
 
 from collections import Counter
@@ -8,8 +9,14 @@ from typing import Any, Optional, Tuple
 
 import pandas as pd
 
-from src.anomaly_detection.src.features import FEATURE_COLUMNS, extract_track_features
-from src.anomaly_detection.src.quality import CORE_FEATURES, QUALITY_FLAG_NAMES, assess_track_quality
+from src.features import (
+    FEATURE_COLUMNS,
+    extract_track_features,
+)
+from src.quality import (
+    CORE_FEATURES,
+    assess_track_quality,
+)
 
 
 EXTENDED_FEATURES = CORE_FEATURES + ("duration_minutes", "distance_km")
@@ -43,27 +50,43 @@ def _finite_number(value: Any) -> Optional[float]:
         number = float(value)
     except (TypeError, ValueError):
         return None
+
     return number if math.isfinite(number) else None
 
 
 def _id_component(value: Any, column_name: str) -> str:
     """Format numeric track/vehicle IDs for speed-file paths."""
     number = _finite_number(value)
+
     if number is None:
-        raise ValueError(f"{column_name} is missing or invalid: {value!r}")
+        raise ValueError(
+            f"{column_name} is missing or invalid: {value!r}"
+        )
+
     if number.is_integer():
         return str(int(number))
+
     return str(value).strip()
 
 
 def _duration_seconds(track: pd.Series) -> Optional[float]:
     """Get duration from the saved field or derive it from timestamps."""
     duration = _finite_number(track.get("duration_seconds"))
+
     if duration is not None:
         return duration
 
-    start = pd.to_datetime(track.get("start_time"), utc=True, errors="coerce")
-    stop = pd.to_datetime(track.get("stop_time"), utc=True, errors="coerce")
+    start = pd.to_datetime(
+        track.get("start_time"),
+        utc=True,
+        errors="coerce",
+    )
+    stop = pd.to_datetime(
+        track.get("stop_time"),
+        utc=True,
+        errors="coerce",
+    )
+
     if pd.isna(start) or pd.isna(stop):
         return None
 
@@ -83,8 +106,10 @@ def _status_with_feature_check(
     ]
 
     reasons = list(quality_result["ineligible_reasons"])
+
     reasons.extend(
-        f"missing_required_feature:{name}" for name in missing_features
+        f"missing_required_feature:{name}"
+        for name in missing_features
     )
 
     if reasons:
@@ -95,7 +120,100 @@ def _status_with_feature_check(
     return status, reasons, missing_features
 
 
-def _summarize_model(table: pd.DataFrame, model_name: str) -> dict:
+def _attach_cluster_assignments(
+    enriched_tracks: pd.DataFrame,
+    cluster_assignments: pd.DataFrame,
+) -> pd.DataFrame:
+    """Attach existing cluster labels to tracks using track_id."""
+
+    required_columns = {
+        "track_id",
+        "vehicle_id",
+        "cluster",
+    }
+
+    missing_columns = required_columns.difference(
+        cluster_assignments.columns
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Cluster assignments are missing required columns: "
+            + ", ".join(sorted(missing_columns))
+        )
+
+    if cluster_assignments["track_id"].isna().any():
+        raise ValueError(
+            "Cluster assignments contain missing track_id values."
+        )
+
+    if cluster_assignments["track_id"].duplicated().any():
+        raise ValueError(
+            "Cluster assignments contain duplicate track_id values."
+        )
+
+    if cluster_assignments["vehicle_id"].isna().any():
+        raise ValueError(
+            "Cluster assignments contain missing vehicle_id values."
+        )
+
+    if cluster_assignments["cluster"].isna().any():
+        raise ValueError(
+            "Cluster assignments contain missing cluster values."
+        )
+
+    if "cluster" in enriched_tracks.columns:
+        raise ValueError(
+            "Enriched tracks already contain a cluster column. "
+            "Use the separate cluster assignments as the source of truth."
+        )
+
+    cluster_lookup = cluster_assignments[
+        ["track_id", "vehicle_id", "cluster"]
+    ].copy()
+
+    merged = enriched_tracks.merge(
+        cluster_lookup,
+        on="track_id",
+        how="left",
+        validate="one_to_one",
+        suffixes=("", "_cluster"),
+        indicator=True,
+    )
+
+    matched = merged["_merge"] == "both"
+
+    vehicle_mismatch = (
+        matched
+        & (
+            merged["vehicle_id"]
+            != merged["vehicle_id_cluster"]
+        )
+    )
+
+    if vehicle_mismatch.any():
+        mismatch_count = int(vehicle_mismatch.sum())
+
+        raise ValueError(
+            f"Vehicle ID mismatch for {mismatch_count} "
+            "track cluster assignments."
+        )
+
+    merged = merged.drop(
+        columns=[
+            "vehicle_id_cluster",
+            "_merge",
+        ]
+    )
+
+    return merged
+
+
+def _summarize_model(
+    table: pd.DataFrame,
+    model_name: str,
+) -> dict:
+    """Summarize eligibility and ineligibility reasons for a model."""
     status_column = f"quality_status_{model_name}"
     reason_column = f"ineligible_reasons_{model_name}"
     missing_column = f"missing_required_features_{model_name}"
@@ -103,11 +221,13 @@ def _summarize_model(table: pd.DataFrame, model_name: str) -> dict:
     status_counts = table[status_column].value_counts().to_dict()
 
     reason_counts = Counter()
+
     for value in table[reason_column]:
         if value:
             reason_counts.update(value.split(";"))
 
     missing_counts = Counter()
+
     for value in table[missing_column]:
         if value:
             missing_counts.update(value.split(";"))
@@ -118,8 +238,12 @@ def _summarize_model(table: pd.DataFrame, model_name: str) -> dict:
             status_counts.get("eligible_with_warnings", 0)
         ),
         "ineligible": int(status_counts.get("ineligible", 0)),
-        "ineligibility_reasons": dict(sorted(reason_counts.items())),
-        "missing_required_feature_counts": dict(sorted(missing_counts.items())),
+        "ineligibility_reasons": dict(
+            sorted(reason_counts.items())
+        ),
+        "missing_required_feature_counts": dict(
+            sorted(missing_counts.items())
+        ),
     }
 
 
@@ -127,17 +251,29 @@ def build_modeling_table(
     enriched_tracks: pd.DataFrame,
     speed_root: str,
     min_valid_telemetry_seconds: Optional[float] = None,
+    cluster_assignments: Optional[pd.DataFrame] = None,
 ) -> tuple:
     """Build core and extended modelling rows, reading one speed file at a time.
 
     Speed files must be stored as:
         speed_root/<vehicle_id>/<track_id>.csv
 
+    Cluster assignments are optional. When provided, they are attached
+    using track_id while preserving tracks without a cluster assignment.
+
     Returns:
         (modeling_table, eligibility_summary)
     """
-    required_metadata_columns = {"track_id", "vehicle_id"}
-    missing_columns = required_metadata_columns.difference(enriched_tracks.columns)
+
+    required_metadata_columns = {
+        "track_id",
+        "vehicle_id",
+    }
+
+    missing_columns = required_metadata_columns.difference(
+        enriched_tracks.columns
+    )
+
     if missing_columns:
         raise ValueError(
             "Enriched tracks are missing required columns: "
@@ -145,44 +281,99 @@ def build_modeling_table(
         )
 
     if enriched_tracks["track_id"].isna().any():
-        raise ValueError("Enriched tracks contain missing track_id values.")
+        raise ValueError(
+            "Enriched tracks contain missing track_id values."
+        )
+
     if enriched_tracks["track_id"].duplicated().any():
-        raise ValueError("Enriched tracks contain duplicate track_id values.")
+        raise ValueError(
+            "Enriched tracks contain duplicate track_id values."
+        )
+
     if enriched_tracks["vehicle_id"].isna().any():
-        raise ValueError("Enriched tracks contain missing vehicle_id values.")
+        raise ValueError(
+            "Enriched tracks contain missing vehicle_id values."
+        )
+
+    # Attach previously generated cluster assignments.
+    if cluster_assignments is not None:
+        enriched_tracks = _attach_cluster_assignments(
+            enriched_tracks,
+            cluster_assignments,
+        )
+    else:
+        enriched_tracks = enriched_tracks.copy()
+        enriched_tracks["cluster"] = None
 
     speed_root_path = Path(speed_root)
+
     records = []
 
     for _, track in enriched_tracks.iterrows():
+
         track_id = track["track_id"]
         vehicle_id = track["vehicle_id"]
-        vehicle_folder = _id_component(vehicle_id, "vehicle_id")
-        track_file = _id_component(track_id, "track_id")
-        speed_path = speed_root_path / vehicle_folder / f"{track_file}.csv"
+
+        vehicle_folder = _id_component(
+            vehicle_id,
+            "vehicle_id",
+        )
+
+        track_file = _id_component(
+            track_id,
+            "track_id",
+        )
+
+        speed_path = (
+            speed_root_path
+            / vehicle_folder
+            / f"{track_file}.csv"
+        )
 
         processing_error = None
+
         if not speed_path.is_file():
-            speed = pd.DataFrame(columns=["epoch", "speed"])
+            speed = pd.DataFrame(
+                columns=["epoch", "speed"]
+            )
+
             processing_error = "missing_speed_file"
+
         else:
             try:
                 speed = pd.read_csv(speed_path)
+
             except Exception as exc:
-                speed = pd.DataFrame(columns=["epoch", "speed"])
-                processing_error = f"speed_read_error:{type(exc).__name__}"
+                speed = pd.DataFrame(
+                    columns=["epoch", "speed"]
+                )
+
+                processing_error = (
+                    f"speed_read_error:{type(exc).__name__}"
+                )
 
         feature_values = extract_track_features(speed)
 
         duration_seconds = _duration_seconds(track)
+
         duration_minutes = (
             duration_seconds / 60.0
-            if duration_seconds is not None and duration_seconds >= 0
+            if (
+                duration_seconds is not None
+                and duration_seconds >= 0
+            )
             else None
         )
 
-        distance = _finite_number(track.get("distance"))
-        distance_km = distance / 1000.0 if distance is not None else None
+        distance = _finite_number(
+            track.get("distance")
+        )
+
+        distance_km = (
+            distance / 1000.0
+            if distance is not None
+            else None
+        )
 
         feature_values["duration_minutes"] = duration_minutes
         feature_values["distance_km"] = distance_km
@@ -191,48 +382,92 @@ def build_modeling_table(
             track,
             speed,
             required_features=CORE_FEATURES,
-            min_valid_telemetry_seconds=min_valid_telemetry_seconds,
+            min_valid_telemetry_seconds=(
+                min_valid_telemetry_seconds
+            ),
         )
+
         quality_extended = assess_track_quality(
             track,
             speed,
             required_features=EXTENDED_FEATURES,
-            min_valid_telemetry_seconds=min_valid_telemetry_seconds,
+            min_valid_telemetry_seconds=(
+                min_valid_telemetry_seconds
+            ),
         )
 
-        status_core, reasons_core, missing_core = _status_with_feature_check(
-            quality_core, feature_values, CORE_FEATURES
-        )
-        status_extended, reasons_extended, missing_extended = (
+        status_core, reasons_core, missing_core = (
             _status_with_feature_check(
-                quality_extended, feature_values, EXTENDED_FEATURES
+                quality_core,
+                feature_values,
+                CORE_FEATURES,
             )
+        )
+
+        (
+            status_extended,
+            reasons_extended,
+            missing_extended,
+        ) = _status_with_feature_check(
+            quality_extended,
+            feature_values,
+            EXTENDED_FEATURES,
         )
 
         record = {
             "track_id": track_id,
             "vehicle_id": vehicle_id,
             "fleet_test_id": track.get("fleet_test_id"),
-            **{name: feature_values.get(name) for name in FEATURE_COLUMNS},
+
+            # Previously generated movement cluster.
+            "cluster": track.get("cluster"),
+
+            **{
+                name: feature_values.get(name)
+                for name in FEATURE_COLUMNS
+            },
+
             "duration_minutes": duration_minutes,
             "distance_km": distance_km,
+
             "quality_status": status_core,
             "quality_status_core": status_core,
             "quality_status_extended": status_extended,
-            "reason_codes": ";".join(quality_core["reason_codes"]),
-            "ineligible_reasons_core": ";".join(reasons_core),
-            "ineligible_reasons_extended": ";".join(reasons_extended),
-            "missing_required_features_core": ";".join(missing_core),
-            "missing_required_features_extended": ";".join(missing_extended),
+
+            "reason_codes": ";".join(
+                quality_core["reason_codes"]
+            ),
+
+            "ineligible_reasons_core": ";".join(
+                reasons_core
+            ),
+
+            "ineligible_reasons_extended": ";".join(
+                reasons_extended
+            ),
+
+            "missing_required_features_core": ";".join(
+                missing_core
+            ),
+
+            "missing_required_features_extended": ";".join(
+                missing_extended
+            ),
+
             "processing_error": processing_error,
-            "telemetry_coverage_ratio": quality_core["telemetry_coverage_ratio"],
+
+            "telemetry_coverage_ratio": (
+                quality_core["telemetry_coverage_ratio"]
+            ),
         }
 
         for name in CONTEXT_COLUMNS:
             if name in enriched_tracks.columns:
                 record[name] = track.get(name)
 
-        for name, value in quality_core["quality_flags"].items():
+        for name, value in quality_core[
+            "quality_flags"
+        ].items():
             record[f"flag_{name}"] = bool(value)
 
         for name, value in feature_values.items():
@@ -246,27 +481,80 @@ def build_modeling_table(
 
     table = pd.DataFrame.from_records(records)
 
+    # Cluster assignment coverage and distribution.
+    cluster_distribution = (
+        {
+            str(cluster): int(count)
+            for cluster, count in (
+                table["cluster"]
+                .value_counts()
+                .sort_index()
+                .items()
+            )
+        }
+        if "cluster" in table.columns
+        else {}
+    )
+
+    assigned_count = int(
+        table["cluster"].notna().sum()
+    )
+
     summary = {
         "input_tracks": int(len(enriched_tracks)),
+
+        "cluster_assignments": {
+            "assignments_provided": (
+                cluster_assignments is not None
+            ),
+            "assigned": assigned_count,
+            "unassigned": int(
+                len(table) - assigned_count
+            ),
+            "distribution": cluster_distribution,
+        },
+
         "models": {
-            "core_four_feature": _summarize_model(table, "core"),
-            "extended_six_feature": _summarize_model(table, "extended"),
+            "core_four_feature": _summarize_model(
+                table,
+                "core",
+            ),
+            "extended_six_feature": _summarize_model(
+                table,
+                "extended",
+            ),
         },
+
         "feature_definitions": {
-            "raw_speed_mean_kmh": "Mean raw speed in km/h",
-            "raw_speed_std": "Sample standard deviation in km/h",
-            "low_speed_time_pct_03": "0-100 percentage of valid time below 0.3 m/s",
-            "stop_episode_count_03": "Stop episodes of at least 30 seconds",
-            "duration_minutes": "Track duration in minutes",
-            "distance_km": "Recorded distance in kilometres; zero is retained",
+            "raw_speed_mean_kmh": (
+                "Mean raw speed in km/h"
+            ),
+            "raw_speed_std": (
+                "Sample standard deviation in km/h"
+            ),
+            "low_speed_time_pct_03": (
+                "0-100 percentage of valid time below 0.3 m/s"
+            ),
+            "stop_episode_count_03": (
+                "Stop episodes of at least 30 seconds"
+            ),
+            "duration_minutes": (
+                "Track duration in minutes"
+            ),
+            "distance_km": (
+                "Recorded distance in kilometres; zero is retained"
+            ),
         },
+
         "quality_metric_definitions": {
             "telemetry_coverage_ratio": (
-                "Valid speed interval time divided by recorded track duration; "
-                "quality diagnostic, not a movement-model input"
+                "Valid speed interval time divided by recorded "
+                "track duration; quality diagnostic, not a "
+                "movement-model input"
             ),
             "telemetry_coverage_low": (
-                "Coverage below 80%; review warning only, no coverage-ratio exclusion"
+                "Coverage below 80%; review warning only, "
+                "no coverage-ratio exclusion"
             ),
             "telemetry_coverage_inadequate": (
                 "Coverage below 50%; review warning only"
@@ -283,12 +571,23 @@ def save_modeling_outputs(
     output_directory: str,
 ) -> None:
     """Write the modelling table and eligibility summary to a report folder."""
+
     output_path = Path(output_directory)
-    output_path.mkdir(parents=True, exist_ok=True)
+    output_path.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
-    modeling_table.to_csv(output_path / "modeling_dataset.csv", index=False)
+    modeling_table.to_csv(
+        output_path / "modeling_dataset.csv",
+        index=False,
+    )
 
-    with (output_path / "eligibility_summary.json").open(
-        "w", encoding="utf-8"
-    ) as file:
-        json.dump(eligibility_summary, file, indent=2)
+    with (
+        output_path / "eligibility_summary.json"
+    ).open("w", encoding="utf-8") as file:
+        json.dump(
+            eligibility_summary,
+            file,
+            indent=2,
+        )
