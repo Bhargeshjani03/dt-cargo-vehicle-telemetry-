@@ -14,6 +14,7 @@ from src.webapp.cluster_analysis import render_cluster_analysis
 from src.webapp.duration import render_tour_duration
 from src.webapp.quality import render_quality
 from src.webapp.vehicle_sim_page import render_vehicle_simulator
+from src.webapp.walkthrough import render_project_walkthrough
 from src.webapp.navigation import get_page_link, register_page_links
 
 
@@ -1184,6 +1185,14 @@ PAGES = {
             title="Model Insights",
             icon="🧠",
             url_path="model-insights",
+        ),
+    ],
+    "Read & share": [
+        st.Page(
+            render_project_walkthrough,
+            title="Project Walkthrough",
+            icon="📖",
+            url_path="project-walkthrough",
         ),
     ],
 }

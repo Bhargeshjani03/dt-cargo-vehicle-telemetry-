@@ -139,6 +139,14 @@ def render_home() -> None:
         else:
             st.caption("Historical vehicle telemetry · GPS coordinates are not available in this dataset.")
 
+        walkthrough_page = get_page_link("Project Walkthrough")
+        if walkthrough_page is not None:
+            st.page_link(
+                walkthrough_page,
+                label="Read the project walkthrough",
+                icon=":material/menu_book:",
+            )
+
     with st.container(key="home-workflow"):
         st.markdown("## What this ML project helps you understand")
         st.caption(
