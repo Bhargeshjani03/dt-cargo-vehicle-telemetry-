@@ -1,37 +1,107 @@
-# Raw DT-CARGO data
-data/raw/
 
-# Large/intermediate generated datasets
+# ==========================================
+# RAW AND INTERMEDIATE DATA
+# ==========================================
+backend/data/all_track_predictions.csv
+src/anomaly_detection/reports/cluster_models/all_track_predictions.csv
+# Large generated prediction data
+backend/data/all_track_predictions.csv
+src/anomaly_detection/reports/cluster_models/all_track_predictions.csv
+
+# Generated anomaly validation outputs
+src/anomaly_detection/reports/cluster_models/*predictions*.csv
+src/anomaly_detection/reports/cluster_models/full_inference_parity.csv
+src/anomaly_detection/reports/cluster_models/inference_parity_sample.csv
+
+# Generated tour regression predictions
+src/tour_regression/artifacts/tour_predictions.csv
+src/tour_regression/artifacts/holdout_validation/holdout_predictions.csv
+
+# Large intermediate datasets
 data/interim/
-
-# Processed datasets
 data/processed/
-src/anomaly_detection/reports/cluster_models/
+src/anomaly_detection/reports/full/modeling_dataset.csv
 src/anomaly_detection/reports/modeling_dataset.csv
-# Trained models
-models/
 
-# Python
+# Python environment
+myenv/
+.venv/
+venv/
 __pycache__/
 *.py[cod]
+
+# Jupyter temporary files
+.ipynb_checkpoints/
+data/raw/
+data/interim/
+data/processed/
+
+# Large generated modeling dataset
+src/anomaly_detection/reports/modeling_dataset.csv
+
+# ==========================================
+# PYTHON
+# ==========================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
 
 # Virtual environments
 .venv/
 venv/
 env/
+ENV/
 
-# Jupyter
-.ipynb_checkpoints/
+# ==========================================
+# MODEL ARTIFACTS
+# ==========================================
 
-# Environment/secrets
+# Do not blanket-ignore model directories.
+# Required trained models must be committed.
+
+# ==========================================
+# FRONTEND
+# ==========================================
+
+node_modules/
+dist/
+build/
+.vite/
+
+# ==========================================
+# ENVIRONMENT AND SECRETS
+# ==========================================
+
 .env
+.env.*
+!.env.example
 
-# OS
+# ==========================================
+# OPERATING SYSTEM
+# ==========================================
+
 .DS_Store
+Thumbs.db
 
+# ==========================================
 # IDE
-.vscode/
+# ==========================================
 
-# Temporary files
+.vscode/
+.idea/
+
+# ==========================================
+# TEMPORARY FILES AND LOGS
+# ==========================================
+
 *.tmp
+*.temp
 *.log
+*.bak

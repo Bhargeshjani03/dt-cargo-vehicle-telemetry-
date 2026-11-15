@@ -11,7 +11,6 @@ DEFAULT_DATA_PATH = (
     / "processed"
     / "tour_level"
     / "pca_experiments"
-    / "input"
     / "experiment_B_75pct_without_extreme.csv"
 )
 

@@ -1,0 +1,63 @@
+{
+    "evaluation_type": "held_out_test_evaluation",
+    "model_version": "dt-cargo-tour-hybrid-v1",
+    "evaluated_at_utc": "2026-11-15T13:20:21.339219+00:00",
+    "dataset_path": "/Users/janibhargesh/Documents/ML-Project/data/processed/tour_level/pca_experiments/experiment_B_75pct_without_extreme.csv",
+    "total_usable_tours": 7563,
+    "train_test_split": {
+        "train_percentage": 80.0,
+        "test_percentage": 20.0,
+        "train_count": 6050,
+        "test_count": 1513,
+        "random_state": 42
+    },
+    "preprocessing": "Median imputation, log1p and StandardScaler fitted on training data only.",
+    "clustering": "K-Means fitted on training data only; test tours assigned using fitted K-Means.",
+    "regression": "Decision Tree fitted on training data only using log1p-transformed elapsed span.",
+    "training_metrics": {
+        "sample_count": 6050,
+        "mae_hours": 1.2441714717880359,
+        "rmse_hours": 5.470198716764012,
+        "median_absolute_error_hours": 0.4322160184662365,
+        "r2_score": 0.8844606646554547,
+        "mape_percentage": 17.673385612148003,
+        "mape_sample_count": 6050,
+        "mean_actual_hours": 7.659684934710744,
+        "mean_predicted_hours": 7.474525910202194,
+        "mean_error_hours": -0.185159024508549,
+        "maximum_absolute_error_hours": 296.75860178672986
+    },
+    "test_metrics": {
+        "sample_count": 1513,
+        "mae_hours": 1.816035586352842,
+        "rmse_hours": 6.454861650235977,
+        "median_absolute_error_hours": 0.5417356666103665,
+        "r2_score": 0.8677592043819591,
+        "mape_percentage": 22.381861074758998,
+        "mape_sample_count": 1513,
+        "mean_actual_hours": 7.9921740243812875,
+        "mean_predicted_hours": 7.548041395569378,
+        "mean_error_hours": -0.4441326288119114,
+        "maximum_absolute_error_hours": 157.36152161482448
+    },
+    "training_cluster_profiles": {
+        "0": {
+            "tour_count": 4395,
+            "median_distance_km": 148.109,
+            "median_speed_kmh": 42.33613496896796,
+            "median_track_count": 5.0,
+            "median_elapsed_span_hours": 5.178439999999999
+        },
+        "1": {
+            "tour_count": 1655,
+            "median_distance_km": 8.42,
+            "median_speed_kmh": 10.08009625050544,
+            "median_track_count": 3.0,
+            "median_elapsed_span_hours": 1.257540277777778
+        }
+    },
+    "training_cluster_names": {
+        "0": "Longer-distance / higher-speed pattern",
+        "1": "Shorter-distance / lower-speed pattern"
+    }
+}

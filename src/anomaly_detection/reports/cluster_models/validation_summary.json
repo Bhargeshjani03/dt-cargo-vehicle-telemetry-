@@ -1,0 +1,185 @@
+{
+  "cluster_0": {
+    "cluster": 0,
+    "candidate_tracks": 53133,
+    "eligible": 51214,
+    "eligible_with_warnings": 1919,
+    "missing_required_feature_counts": {
+      "raw_speed_mean_kmh": 0,
+      "raw_speed_std": 0,
+      "low_speed_time_pct_03": 0,
+      "stop_episode_count_03": 0
+    },
+    "usable_tracks": 53133,
+    "training_tracks": 42506,
+    "validation_tracks": 10627,
+    "training_period": {
+      "start": "2021-08-26T13:27:59.533000+00:00",
+      "end": "2023-10-13T12:08:38.696000+00:00"
+    },
+    "validation_period": {
+      "start": "2023-10-13T12:09:30.259000+00:00",
+      "end": "2024-02-06T10:36:02.269000+00:00"
+    },
+    "features": [
+      "raw_speed_mean_kmh",
+      "raw_speed_std",
+      "low_speed_time_pct_03",
+      "stop_episode_count_03"
+    ],
+    "transform": "identity",
+    "score_definition": "Negative Isolation Forest decision_function; higher means more unusual, not a probability.",
+    "threshold": 0.10692514928835581,
+    "threshold_policy": {
+      "target_review_rate": 0.02,
+      "calibration": "training_score_quantile",
+      "training_alert_rate": 0.020020702959582175,
+      "actual_validation_alert_rate": 0.03331137668203632
+    },
+    "training_score_summary": {
+      "min": -0.09709671623399968,
+      "median": -0.044705323801013386,
+      "p90": 0.03091645378700497,
+      "p95": 0.06448957238540715,
+      "p98": 0.10692514928835581,
+      "max": 0.24894628268712216
+    },
+    "validation_score_summary": {
+      "min": -0.09575373175450169,
+      "median": -0.03962508327013742,
+      "p90": 0.04123245780193866,
+      "p95": 0.08062145415187033,
+      "p98": 0.12007585345610025,
+      "max": 0.20611748714864475
+    },
+    "validation_flagged_tracks": 354,
+    "known_limitations": [
+      "No verified anomaly labels are available.",
+      "Review rate is a policy choice, not anomaly prevalence.",
+      "Scores from different cluster models are not directly comparable.",
+      "Flagged tracks require analyst investigation."
+    ]
+  },
+  "cluster_1": {
+    "cluster": 1,
+    "candidate_tracks": 59590,
+    "eligible": 38231,
+    "eligible_with_warnings": 21359,
+    "missing_required_feature_counts": {
+      "raw_speed_mean_kmh": 0,
+      "raw_speed_std": 0,
+      "low_speed_time_pct_03": 0,
+      "stop_episode_count_03": 0
+    },
+    "usable_tracks": 59590,
+    "training_tracks": 47672,
+    "validation_tracks": 11918,
+    "training_period": {
+      "start": "2021-09-07T08:13:03.459000+00:00",
+      "end": "2022-02-20T08:05:15.774000+00:00"
+    },
+    "validation_period": {
+      "start": "2022-02-20T08:11:53.871000+00:00",
+      "end": "2024-01-29T08:24:35.766000+00:00"
+    },
+    "features": [
+      "raw_speed_mean_kmh",
+      "raw_speed_std",
+      "low_speed_time_pct_03",
+      "stop_episode_count_03"
+    ],
+    "transform": "identity",
+    "score_definition": "Negative Isolation Forest decision_function; higher means more unusual, not a probability.",
+    "threshold": 0.16526063772459057,
+    "threshold_policy": {
+      "target_review_rate": 0.02,
+      "calibration": "training_score_quantile",
+      "training_alert_rate": 0.020011746937405605,
+      "actual_validation_alert_rate": 0.055965766068132236
+    },
+    "training_score_summary": {
+      "min": -0.18289703099875526,
+      "median": -0.15737069508133117,
+      "p90": 0.07866678061758464,
+      "p95": 0.12351440582353373,
+      "p98": 0.16526063772459057,
+      "max": 0.30678070339216823
+    },
+    "validation_score_summary": {
+      "min": -0.18289703099875526,
+      "median": 0.01020313782354032,
+      "p90": 0.13664598749467427,
+      "p95": 0.16973187674420603,
+      "p98": 0.20323005863493274,
+      "max": 0.2890975720643285
+    },
+    "validation_flagged_tracks": 667,
+    "known_limitations": [
+      "No verified anomaly labels are available.",
+      "Review rate is a policy choice, not anomaly prevalence.",
+      "Scores from different cluster models are not directly comparable.",
+      "Flagged tracks require analyst investigation."
+    ]
+  },
+  "cluster_2": {
+    "cluster": 2,
+    "candidate_tracks": 35636,
+    "eligible": 10925,
+    "eligible_with_warnings": 24711,
+    "missing_required_feature_counts": {
+      "raw_speed_mean_kmh": 0,
+      "raw_speed_std": 0,
+      "low_speed_time_pct_03": 0,
+      "stop_episode_count_03": 0
+    },
+    "usable_tracks": 35636,
+    "training_tracks": 28508,
+    "validation_tracks": 7128,
+    "training_period": {
+      "start": "2021-09-07T08:46:09.677000+00:00",
+      "end": "2022-02-23T03:54:40.479000+00:00"
+    },
+    "validation_period": {
+      "start": "2022-02-23T04:01:33.737000+00:00",
+      "end": "2024-02-05T11:05:30.979000+00:00"
+    },
+    "features": [
+      "raw_speed_mean_kmh",
+      "raw_speed_std",
+      "low_speed_time_pct_03",
+      "stop_episode_count_03"
+    ],
+    "transform": "identity",
+    "score_definition": "Negative Isolation Forest decision_function; higher means more unusual, not a probability.",
+    "threshold": 0.19094367007311439,
+    "threshold_policy": {
+      "target_review_rate": 0.02,
+      "calibration": "training_score_quantile",
+      "training_alert_rate": 0.020029465413217342,
+      "actual_validation_alert_rate": 0.11054994388327721
+    },
+    "training_score_summary": {
+      "min": -0.17170577384411145,
+      "median": -0.15189654729359428,
+      "p90": 0.09113136573701858,
+      "p95": 0.13710698495442397,
+      "p98": 0.19094367007311439,
+      "max": 0.28255071452658087
+    },
+    "validation_score_summary": {
+      "min": -0.17157126987962318,
+      "median": 0.07652732218024405,
+      "p90": 0.1973084272043046,
+      "p95": 0.22893516039132322,
+      "p98": 0.2508101584875326,
+      "max": 0.3004374424783214
+    },
+    "validation_flagged_tracks": 788,
+    "known_limitations": [
+      "No verified anomaly labels are available.",
+      "Review rate is a policy choice, not anomaly prevalence.",
+      "Scores from different cluster models are not directly comparable.",
+      "Flagged tracks require analyst investigation."
+    ]
+  }
+}
