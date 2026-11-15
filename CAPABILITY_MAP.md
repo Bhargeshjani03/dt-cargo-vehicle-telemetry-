@@ -58,7 +58,7 @@ Keep the active page visible. As each data page is connected, carry the date ran
 
 1. `shared-foundation` plus all eight page shells — establish navigation, common filters, the visual language, and data-loading boundaries. Each page shows its purpose and primary action; unfinished analysis areas show an honest data/readiness state rather than fabricated metrics.
 2. `fleet-overview` — deliver the first end-to-end analyst workflow and validate summary-to-detail navigation.
-3. `data-quality` and `cluster-analysis` — make data eligibility and behavioral groupings interpretable.
+3. `data-quality` and `cluster-analysis` — connected to the existing processed quality and cluster-assignment files. Both pages show record counts and filters; cluster profiles include month-by-month population trends.
 4. `anomaly-monitoring` — connect scored records and make review actionable.
 5. `vehicle-explorer` and `track-explorer` — deepen investigation from fleet signals to individual records.
 6. `model-insights` — document the models and evaluation outputs used by the other pages.
@@ -75,3 +75,9 @@ The current distance-only tour model uses `total_distance_km`, which is observed
 Apply Apple's guidance to the web app through clear purpose, hierarchy, familiar navigation, direct language, reversible filters, visible feedback, privacy-aware data handling, and accessible charts. Keep charts focused on decision-relevant values and pair them with labels or tables so color is not the only way to read a result. Design responsively, with the analyst's wide-screen workflow as the primary layout.
 
 References: [Apple Design Resources](https://developer.apple.com/design/resources/), [Human Interface Guidelines: Design Principles](https://developer.apple.com/design/human-interface-guidelines/design-principles/), [Sidebars](https://developer.apple.com/design/human-interface-guidelines/sidebars), and [Charts](https://developer.apple.com/design/human-interface-guidelines/charts).
+
+## Delivery and model lifecycle
+
+The application is packaged as a Docker image for Kuberns. GitHub Actions runs the existing Python tests and builds that image for pull requests and pushes. Configure Kuberns to deploy from a protected release branch only after GitHub requires the CI check to pass. The app reads private processed data from Kuberns Storage when local data is absent.
+
+A scheduled GitHub Actions workflow retrains the three cluster-specific Isolation Forest models from the private training dataset, performs the current chronological validation split, and writes immutable candidate artifacts and a provenance manifest to Kuberns Storage. It does not replace the app's active artifacts. Since there are no verified anomaly labels, candidates require analyst review before promotion. Tour-duration CT remains gated on populated planned inputs and an evaluation set that only uses pre-departure features. Setup details are in [MLOPS.md](MLOPS.md).

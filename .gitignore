@@ -35,3 +35,13 @@ env/
 # Temporary files
 *.tmp
 *.log
+
+# React / Express app output
+node_modules/
+client/dist/
+
+# Locally trained tour-duration artifacts
+src/tour_duration/artifacts/
+
+.agents/skills/apple-design/
+.design-rules/

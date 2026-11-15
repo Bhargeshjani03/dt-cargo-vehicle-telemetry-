@@ -1,0 +1,12 @@
+.git
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+*.ipynb
+.env
+.streamlit/secrets.toml
+data/
+src/anomaly_detection/reports/
+src/anomaly_detection/artifacts/
