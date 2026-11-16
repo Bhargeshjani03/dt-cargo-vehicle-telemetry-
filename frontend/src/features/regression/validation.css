@@ -793,3 +793,22 @@
     grid-template-columns: 1fr;
   }
 }
+.validation-conditional-notice {
+  margin: 18px 0 26px;
+  padding: 16px 18px;
+  border: 1px solid #f3d28a;
+  border-radius: 12px;
+  background: #fffbeb;
+}
+
+.validation-conditional-notice strong {
+  color: #92400e;
+  font-size: 13px;
+}
+
+.validation-conditional-notice p {
+  margin: 7px 0 0;
+  color: #78350f;
+  font-size: 12px;
+  line-height: 1.65;
+}

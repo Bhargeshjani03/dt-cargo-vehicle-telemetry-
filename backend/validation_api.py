@@ -6,7 +6,10 @@ import json
 import joblib
 import numpy as np
 import pandas as pd
+import sys
+from functools import lru_cache
 
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException, Query
 
 
@@ -205,6 +208,14 @@ def validation_summary():
         ),
         "training_cluster_names": metrics.get(
             "training_cluster_names"
+        ),
+        "evaluation_type": metrics.get("evaluation_type"),
+        "gap_filter": metrics.get("gap_filter"),
+        "baseline_on_same_filtered_test_subset": metrics.get(
+            "baseline_on_same_filtered_test_subset"
+        ),
+        "test_metrics_on_all_tours": metrics.get(
+            "test_metrics_on_all_tours"
         ),
     }
 
@@ -531,3 +542,61 @@ def model_information():
         "cluster_profiles": bundle["cluster_profiles"],
         "cluster_names": bundle["cluster_names"],
     })
+
+# ---------------------------------------------------------
+# LIVE PRE-TRIP TOUR DURATION PREDICTION
+# ---------------------------------------------------------
+
+class TourPredictionRequest(BaseModel):
+    total_distance_km: float = Field(gt=0)
+    cluster_id: int = Field(ge=0, le=1)
+
+
+@lru_cache(maxsize=1)
+def get_live_predictor():
+    """
+    Load the production model once and reuse it for requests.
+    """
+    project_root = Path(__file__).resolve().parents[1]
+
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+
+    try:
+        from src.tour_regression.inference import load_predictor
+
+        return load_predictor(MODEL_FILE)
+
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        )
+
+
+@router.post("/predict")
+def predict_tour_duration(payload: TourPredictionRequest):
+    try:
+        predictor = get_live_predictor()
+
+        result = predictor.predict_one({
+            "total_distance_km": payload.total_distance_km,
+            "cluster_id": payload.cluster_id,
+        })
+
+        return json_safe(result)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Tour prediction failed: {exc}",
+        )

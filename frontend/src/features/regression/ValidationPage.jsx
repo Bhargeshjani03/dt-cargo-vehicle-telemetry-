@@ -9,7 +9,7 @@ import {
   getRegressionModelInfo,
 } from "../../services/api/validationApi";
 import "./validation.css";
-
+import LiveTourPrediction from "./LivePrediction";
 const number = (value, digits = 2) => {
   if (value === null || value === undefined || !Number.isFinite(Number(value))) {
     return "—";
@@ -703,8 +703,8 @@ export default function ValidationPage() {
           </span>
           <h1>Held-out Validation</h1>
           <p>
-            Evaluation of tour-duration predictions on data excluded
-            from model fitting.
+            Conditional evaluation of the pre-trip duration model on
+            held-out regular-tour records.
           </p>
         </div>
 
@@ -729,11 +729,27 @@ export default function ValidationPage() {
         <span>{testShare} held out</span>
         <span>Random state: {split?.random_state ?? "—"}</span>
       </div>
+      <LiveTourPrediction />
 
+      <div className="validation-conditional-notice">
+        <strong>Conditional regular-tour evaluation</strong>
+        <p>
+          Cluster 1 tours with historical unrecorded gaps above
+          the selected threshold were excluded from regression
+          training and the conditional holdout evaluation.
+          The displayed R² applies to this filtered population,
+          not every future tour.
+        </p>
+        <p>
+          The gap threshold is used only during historical
+          training and evaluation. It is not a user input and
+          cannot be checked before dispatch.
+        </p>
+      </div>
       <Section
         eyebrow="PRIMARY RESULT"
         title="Held-out test performance"
-        description="These metrics are calculated on the 20% test split that was not used to fit preprocessing, clustering or regression."
+        description="Metrics are calculated on the held-out tours that satisfy the retrospective regular-tour filter. The complete holdout population is also recorded separately in the validation report."
       >
         <div className="validation-metrics-grid">
           <MetricCard
