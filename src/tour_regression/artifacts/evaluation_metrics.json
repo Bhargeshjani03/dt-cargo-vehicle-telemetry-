@@ -1,0 +1,16 @@
+{
+    "evaluation_type": "training_set_evaluation",
+    "evaluation_note": "These are training-set metrics because the model was evaluated on the same dataset used for fitting.",
+    "sample_count": 7563,
+    "mae_hours": 1.315411143423059,
+    "rmse_hours": 5.757499724994231,
+    "median_absolute_error_hours": 0.4462720815584469,
+    "r2_score": 0.8773282828719535,
+    "mape_percentage": 18.070922406359674,
+    "mape_sample_count": 7563,
+    "mean_actual_hours": 7.726200337681989,
+    "mean_predicted_hours": 7.531396791862723,
+    "mean_absolute_error_minutes": 78.92466860538354,
+    "model_version": "dt-cargo-tour-hybrid-v1",
+    "evaluated_at_utc": "2026-11-15T13:18:02.090503+00:00"
+}

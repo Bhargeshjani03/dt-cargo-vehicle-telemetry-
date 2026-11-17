@@ -1,0 +1,28 @@
+{
+  "input_tracks": 100,
+  "available_tracks_before_sampling": 151598,
+  "sample_limit": 100,
+  "scored_rows": 100,
+  "model_versions": {
+    "0": "dt_cargo_iforest_cluster_0_v1",
+    "1": "dt_cargo_iforest_cluster_1_v1",
+    "2": "dt_cargo_iforest_cluster_2_v1"
+  },
+  "cluster_counts": {
+    "1": 47,
+    "0": 37,
+    "2": 16
+  },
+  "quality_status_counts": {
+    "eligible": 70,
+    "eligible_with_warnings": 30
+  },
+  "eligible_rows": 100,
+  "ineligible_rows": 0,
+  "unassigned_cluster_rows": 0,
+  "unsupported_cluster_rows": 0,
+  "flagged_rows": 4,
+  "processing_errors": 0,
+  "missing_telemetry_files": 0,
+  "output_csv": "src/anomaly_detection/reports/cluster_models/smoke_predictions.csv"
+}
